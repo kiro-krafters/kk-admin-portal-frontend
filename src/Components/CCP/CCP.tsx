@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useCCPWindow } from "../../Utils/CCPWindowContext";
 import { useConnect } from "../../Utils/ConnectProvider";
 import ActiveCall from "./ActiveCall";
 import CCPHeader, { type CCPTab } from "./CCPHeader";
@@ -8,8 +9,6 @@ import Placeholder from "./Placeholder";
 import QuickConnectsPanel from "./QuickConnectsPanel";
 
 const DEFAULT_STATES = ["Available", "Offline", "Break", "Lunch"];
-
-type PhoneView = "dialer" | "quick-connects";
 
 export default function CCP() {
   const {
@@ -21,9 +20,9 @@ export default function CCP() {
     changeState,
     dial,
   } = useConnect();
+  const { view, setView } = useCCPWindow();
 
   const [activeTab, setActiveTab] = useState<CCPTab>("phone");
-  const [phoneView, setPhoneView] = useState<PhoneView>("dialer");
   const [error, setError] = useState<string | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("Offline");
 
@@ -69,18 +68,18 @@ export default function CCP() {
 
       <div className="flex-1 overflow-hidden">
         {activeTab === "phone" && contact && <ActiveCall />}
-        {activeTab === "phone" && !contact && phoneView === "dialer" && (
+        {activeTab === "phone" && !contact && view === "dialer" && (
           <NumberPad
-            onClose={() => setPhoneView("dialer")}
+            onClose={() => setView("dialer")}
             onCall={handleCall}
             disableCall={status !== "ready"}
-            onQuickConnects={() => setPhoneView("quick-connects")}
+            onQuickConnects={() => setView("quick-connects")}
           />
         )}
-        {activeTab === "phone" && !contact && phoneView === "quick-connects" && (
+        {activeTab === "phone" && !contact && view === "quick-connects" && (
           <QuickConnectsPanel
-            onClose={() => setPhoneView("dialer")}
-            onDialed={() => setPhoneView("dialer")}
+            onClose={() => setView("dialer")}
+            onDialed={() => setView("dialer")}
           />
         )}
         {activeTab === "chat" && (

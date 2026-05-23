@@ -1,4 +1,5 @@
 import { createBrowserRouter } from "react-router";
+import AgentWorkspace from "./Pages/AgentWorkspace";
 import Layout from "./Pages/Layout";
 import Dashboard from "./Pages/Dashboard";
 import StubPage from "./Pages/StubPage";
@@ -13,6 +14,7 @@ export const router = createBrowserRouter([
       { index: true, Component: Dashboard },
       { path: "supervisor", Component: SupervisorPage },
       { path: "manager", Component: ManagerPage },
+      { path: "workspace", Component: AgentWorkspace },
       {
         path: "users",
         element: (

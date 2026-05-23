@@ -19,7 +19,7 @@ export default function CCPHeader({
   onStatusChange,
 }: Props) {
   return (
-    <header className="flex items-center justify-between bg-connect-navy-deep px-3 py-2 text-white">
+    <header className="flex items-center justify-between bg-gradient-to-r from-connect-teal-dark to-connect-teal px-3 py-2 text-white">
       <StatusDropdown
         current={statusName}
         options={statusOptions}
