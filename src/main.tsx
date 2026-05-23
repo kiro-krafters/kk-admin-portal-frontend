@@ -3,7 +3,10 @@ import { RouterProvider } from "react-router";
 import "./index.css";
 import "./App.css";
 import { router } from "./router";
+import { AuthProvider } from "./Utils/AuthProvider";
 
 createRoot(document.getElementById("root")!).render(
-  <RouterProvider router={router} />
+  <AuthProvider>
+    <RouterProvider router={router} />
+  </AuthProvider>
 );

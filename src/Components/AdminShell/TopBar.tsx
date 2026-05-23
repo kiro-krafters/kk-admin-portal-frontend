@@ -1,5 +1,7 @@
 import { useCCPWindow } from "../../Utils/CCPWindowContext";
 import { useConnect } from "../../Utils/ConnectProvider";
+import { useAuth } from "../../Utils/AuthProvider";
+import { getRoleLabel } from "../../Utils/auth";
 import { PhoneFabIcon } from "./AdminIcons";
 import { BellIcon, HelpIcon, SearchIcon } from "./AdminIcons";
 
@@ -12,6 +14,9 @@ export default function TopBar({
 }: Props) {
   const { agentName, status, contact, debugCCP, toggleDebugCCP } = useConnect();
   const { openNumberPad } = useCCPWindow();
+  const { session, signOut } = useAuth();
+  const displayName = session?.email ?? session?.username ?? agentName ?? "Agent";
+  const roleLabel = getRoleLabel(session);
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between border-b border-connect-border bg-white px-4">
@@ -91,17 +96,25 @@ export default function TopBar({
         </IconButton>
         <div className="ml-1 flex items-center gap-2 rounded-md px-2 py-1 hover:bg-connect-bg-alt">
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-connect-teal to-connect-sky text-xs font-semibold text-white">
-            {(agentName ?? "AG").slice(0, 2).toUpperCase()}
+            {displayName.slice(0, 2).toUpperCase()}
           </div>
           <div className="hidden text-left lg:block">
             <p className="text-xs font-semibold leading-tight text-connect-text">
-              {agentName ?? "Agent"}
+              {displayName}
             </p>
             <p className="text-[10px] text-connect-text-secondary">
-              Administrator
+              {roleLabel}
             </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={signOut}
+          title="Sign out"
+          className="ml-1 rounded-md border border-connect-border bg-white px-2 py-1 text-[11px] font-semibold text-connect-text-secondary hover:border-connect-teal hover:text-connect-teal-dark"
+        >
+          Sign out
+        </button>
       </div>
     </header>
   );

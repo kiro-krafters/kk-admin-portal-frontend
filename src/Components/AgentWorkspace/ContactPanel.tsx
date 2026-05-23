@@ -1,23 +1,14 @@
 import { useCCPWindow } from "../../Utils/CCPWindowContext";
 import { useConnect } from "../../Utils/ConnectProvider";
 import { PhoneFabIcon } from "../AdminShell/AdminIcons";
-import ChatComposer from "./ChatComposer";
-import ChatTranscript from "./ChatTranscript";
+import { ChatIcon } from "../CCP/icons";
 import ContactCard from "./ContactCard";
 import VoiceCallPanel from "./VoiceCallPanel";
 
 export default function ContactPanel() {
-  const {
-    contact,
-    contactAttributes,
-    chatMessages,
-    isMuted,
-    isOnHold,
-    sendChat,
-    notifyTyping,
-    status,
-  } = useConnect();
-  const { openNumberPad } = useCCPWindow();
+  const { contact, contactAttributes, isMuted, isOnHold, status } =
+    useConnect();
+  const { open: openCCP, openNumberPad } = useCCPWindow();
 
   if (!contact) {
     return (
@@ -52,26 +43,43 @@ export default function ContactPanel() {
     <section className="flex flex-1 flex-col gap-3 overflow-hidden bg-connect-bg-alt p-3">
       <ContactCard contact={contact} attributes={contactAttributes} />
 
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-connect-border bg-white shadow-connect-card">
-        {isChat ? (
-          <>
-            <div className="flex-1 overflow-hidden">
-              <ChatTranscript messages={chatMessages} />
-            </div>
-            <ChatComposer
-              disabled={contact.state !== "connected"}
-              onSend={sendChat}
-              onTyping={notifyTyping}
-            />
-          </>
-        ) : (
+      {isChat ? (
+        <ChatInCCPHint onOpenCCP={openCCP} />
+      ) : (
+        <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-connect-border bg-white shadow-connect-card">
           <VoiceCallPanel
             contact={contact}
             isMuted={isMuted}
             isOnHold={isOnHold}
           />
-        )}
-      </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function ChatInCCPHint({ onOpenCCP }: { onOpenCCP: () => void }) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-connect-border bg-white p-6 text-center shadow-connect-card">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-connect-teal-soft text-connect-teal-dark">
+        <ChatIcon className="h-6 w-6" />
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold text-connect-text">
+          Chat is open in the CCP
+        </h3>
+        <p className="mt-1 max-w-xs text-xs text-connect-text-secondary">
+          Read and reply to this conversation from the CCP panel. Customer
+          details stay here on the workspace.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onOpenCCP}
+        className="mt-1 rounded-md bg-connect-teal px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-connect-teal-dark"
+      >
+        Open CCP
+      </button>
+    </div>
   );
 }

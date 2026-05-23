@@ -40,6 +40,7 @@ const NAV: NavItem[] = [
     ],
   },
   { to: "/analytics", label: "Analytics", icon: AnalyticsIcon },
+  { to: "/audit-logs", label: "Audit logs", icon: AnalyticsIcon },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 

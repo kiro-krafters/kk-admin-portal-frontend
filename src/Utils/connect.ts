@@ -8,32 +8,81 @@ declare global {
 }
 
 export type ConnectInitOptions = {
+  /** Base instance URL, e.g. `https://<alias>.my.connect.aws`. */
   instanceUrl: string;
+  /**
+   * Full CCP URL when known (e.g. returned by `GET /admin/ccp-config`). If
+   * provided, used as-is. Otherwise we derive a sensible default from
+   * `instanceUrl` for both URL styles AWS ships today:
+   *   - newer:  `<alias>.my.connect.aws/ccp-v2`
+   *   - older:  `<alias>.awsapps.com/connect/ccp-v2`
+   */
+  ccpUrl?: string;
   region?: string;
   loginPopup?: boolean;
+  loginPopupAutoClose?: boolean;
   softphone?: boolean;
 };
 
 let initialized = false;
+let lastInitUrl: string | null = null;
+
+function deriveDefaultCcpUrl(instanceUrl: string): string {
+  const base = instanceUrl.replace(/\/$/, "");
+  // Newer my.connect.aws instances use /ccp-v2 directly; legacy awsapps.com
+  // instances use /connect/ccp-v2. Pick the right suffix from the host.
+  if (/\.my\.connect\.aws$/i.test(new URL(base).host)) {
+    return `${base}/ccp-v2`;
+  }
+  return `${base}/connect/ccp-v2`;
+}
 
 export function initializeCCP(
   container: HTMLDivElement,
   {
     instanceUrl,
+    ccpUrl,
     region = "us-east-1",
     loginPopup = true,
+    loginPopupAutoClose = true,
     softphone = true,
   }: ConnectInitOptions
 ): void {
-  if (initialized) return;
+  const resolvedCcpUrl = ccpUrl ?? deriveDefaultCcpUrl(instanceUrl);
+
+  // Avoid initializing twice for the same URL; if the URL changed (e.g. API
+  // config arrived after a placeholder URL), tear down the previous instance
+  // before re-initialising.
+  if (initialized && lastInitUrl === resolvedCcpUrl) return;
+  if (initialized) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const core: any = connect.core;
+      if (typeof core.terminate === "function") core.terminate();
+    } catch {
+      /* best-effort */
+    }
+    // Remove any iframe Connect inserted into the previous container.
+    container.querySelectorAll("iframe").forEach((f) => f.remove());
+  }
   initialized = true;
+  lastInitUrl = resolvedCcpUrl;
+
+  // eslint-disable-next-line no-console
+  console.info("[CCP] initCCP", {
+    ccpUrl: resolvedCcpUrl,
+    region,
+    loginPopup,
+    softphone,
+    origin: window.location.origin,
+  });
 
   connect.core.initCCP(container, {
-    ccpUrl: `${instanceUrl.replace(/\/$/, "")}/connect/ccp-v2`,
+    ccpUrl: resolvedCcpUrl,
     loginPopup,
-    loginPopupAutoClose: true,
+    loginPopupAutoClose,
     loginOptions: {
-      autoClose: true,
+      autoClose: loginPopupAutoClose,
       height: 600,
       width: 400,
     },
@@ -47,6 +96,39 @@ export function initializeCCP(
       enablePhoneTypeSettings: true,
     },
   });
+
+  // Surface the most common failure modes loudly so they're not just
+  // swallowed by the SDK's internal retry loop.
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bus: any = (connect.core as any).getEventBus?.();
+    if (bus && typeof bus.subscribe === "function") {
+      bus.subscribe(connect.EventType.ACKNOWLEDGE, () => {
+        // eslint-disable-next-line no-console
+        console.info("[CCP] handshake ACK from iframe — connected.");
+      });
+      bus.subscribe(connect.EventType.TERMINATED, () => {
+        // eslint-disable-next-line no-console
+        console.warn("[CCP] terminated.");
+        initialized = false;
+        lastInitUrl = null;
+      });
+      bus.subscribe("iframe_retries_exhausted", () => {
+        // eslint-disable-next-line no-console
+        console.error(
+          "[CCP] iframe never ACK'd after 10 retries.\n" +
+            "Likely causes:\n" +
+            "  1. This app's origin (" +
+            window.location.origin +
+            ") isn't in the Connect instance's Approved origins list.\n" +
+            "  2. The SSO login popup was blocked or closed before login completed.\n" +
+            "  3. The user isn't logged in to Connect (click 'Show Connect CCP' in the topbar to see)."
+        );
+      });
+    }
+  } catch {
+    /* best-effort, the SDK shape varies between versions */
+  }
 }
 
 function findAgentState(
@@ -154,6 +236,38 @@ export function hangUpCurrentContact(): void {
     contacts.forEach((c) => {
       const conn = c.getAgentConnection();
       if (conn) conn.destroy();
+    });
+  });
+}
+
+/**
+ * Closes (clears) the current contact — finishes After-Contact-Work and
+ * removes the contact from the agent. Safe to call after the call has ended.
+ */
+export function clearCurrentContact(): void {
+  connect.agent((agent) => {
+    const contacts = agent.getContacts();
+    contacts.forEach((c) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyC = c as any;
+      const fn =
+        typeof anyC.clear === "function"
+          ? anyC.clear.bind(anyC)
+          : typeof anyC.complete === "function"
+          ? anyC.complete.bind(anyC)
+          : null;
+      if (!fn) {
+        // eslint-disable-next-line no-console
+        console.warn("[CCP] contact.clear/complete unavailable on this SDK");
+        return;
+      }
+      fn({
+        // eslint-disable-next-line no-console
+        success: () => console.info("[CCP] contact cleared"),
+        failure: (err: unknown) =>
+          // eslint-disable-next-line no-console
+          console.warn("[CCP] failed to clear contact", err),
+      });
     });
   });
 }

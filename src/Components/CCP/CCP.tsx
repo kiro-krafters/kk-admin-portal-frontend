@@ -3,10 +3,13 @@ import { useCCPWindow } from "../../Utils/CCPWindowContext";
 import { useConnect } from "../../Utils/ConnectProvider";
 import ActiveCall from "./ActiveCall";
 import CCPHeader, { type CCPTab } from "./CCPHeader";
+import ChatPanel from "./ChatPanel";
 import ConnectionBanner from "./ConnectionBanner";
+import NotesTab from "./NotesTab";
 import NumberPad from "./NumberPad";
 import Placeholder from "./Placeholder";
 import QuickConnectsPanel from "./QuickConnectsPanel";
+import SettingsTab from "./SettingsTab";
 
 const DEFAULT_STATES = ["Available", "Offline", "Break", "Lunch"];
 
@@ -25,9 +28,12 @@ export default function CCP() {
   const [activeTab, setActiveTab] = useState<CCPTab>("phone");
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-switch to the right channel tab when a contact arrives.
   useEffect(() => {
-    if (contact) setActiveTab("phone");
-  }, [contact]);
+    if (!contact) return;
+    if (contact.channel === "chat") setActiveTab("chat");
+    else setActiveTab("phone");
+  }, [contact?.contactId, contact?.channel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const options = (
     availableStates.length > 0
@@ -35,7 +41,6 @@ export default function CCP() {
       : DEFAULT_STATES
   ).filter((s, i, arr) => arr.indexOf(s) === i);
 
-  // Drive the picker from the real agent state — no optimistic local copy.
   const statusName = currentState?.name ?? "Offline";
 
   const handleStatusChange = async (next: string) => {
@@ -56,6 +61,9 @@ export default function CCP() {
     }
   };
 
+  const hasVoiceContact = !!contact && contact.channel !== "chat";
+  const hasChatContact = !!contact && contact.channel === "chat";
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-white">
       <CCPHeader
@@ -64,13 +72,15 @@ export default function CCP() {
         statusName={statusName}
         statusOptions={options}
         onStatusChange={handleStatusChange}
+        phoneBadge={hasVoiceContact}
+        chatBadge={hasChatContact}
       />
 
       <ConnectionBanner status={status} agentName={agentName} />
 
       <div className="flex-1 overflow-hidden">
-        {activeTab === "phone" && contact && <ActiveCall />}
-        {activeTab === "phone" && !contact && view === "dialer" && (
+        {activeTab === "phone" && hasVoiceContact && <ActiveCall />}
+        {activeTab === "phone" && !hasVoiceContact && view === "dialer" && (
           <NumberPad
             onClose={() => setView("dialer")}
             onCall={handleCall}
@@ -78,30 +88,26 @@ export default function CCP() {
             onQuickConnects={() => setView("quick-connects")}
           />
         )}
-        {activeTab === "phone" && !contact && view === "quick-connects" && (
+        {activeTab === "phone" && !hasVoiceContact && view === "quick-connects" && (
           <QuickConnectsPanel
             onClose={() => setView("dialer")}
             onDialed={() => setView("dialer")}
           />
         )}
-        {activeTab === "chat" && (
-          <Placeholder
-            title="Chat"
-            message="Chat contacts will appear here when routed to this agent."
-          />
-        )}
-        {activeTab === "notes" && (
-          <Placeholder
-            title="Contact notes"
-            message="Notes for the active contact will appear here."
-          />
-        )}
-        {activeTab === "settings" && (
-          <Placeholder
-            title="Settings"
-            message="Audio devices and CCP preferences."
-          />
-        )}
+
+        {activeTab === "chat" && <ChatPanel />}
+
+        {activeTab === "notes" && <NotesTab />}
+
+        {activeTab === "settings" &&
+          (status === "ready" || status === "initializing" ? (
+            <SettingsTab />
+          ) : (
+            <Placeholder
+              title="Settings"
+              message="Sign in to Amazon Connect to view agent and instance settings."
+            />
+          ))}
       </div>
 
       {error && (
@@ -110,7 +116,7 @@ export default function CCP() {
             !
           </span>
           <div className="flex-1">
-            <p className="font-semibold text-connect-error">Call failed</p>
+            <p className="font-semibold text-connect-error">Something went wrong</p>
             <p className="mt-0.5 break-words text-connect-error">{error}</p>
             <button
               type="button"

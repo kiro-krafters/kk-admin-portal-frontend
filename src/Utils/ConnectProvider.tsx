@@ -12,6 +12,7 @@ import "amazon-connect-streams";
 import "amazon-connect-chatjs";
 import {
   acceptCurrentContact,
+  clearCurrentContact,
   dialEndpoint,
   dialPhoneNumber,
   fetchQuickConnects,
@@ -100,6 +101,7 @@ type ConnectContextValue = {
   dialQuickConnect: (entry: QuickConnectEntry) => Promise<void>;
   refreshQuickConnects: () => Promise<void>;
   hangUp: () => void;
+  closeContact: () => void;
   changeState: (name: string) => Promise<void>;
   debugCCP: boolean;
   toggleDebugCCP: () => void;
@@ -118,7 +120,12 @@ const ConnectContext = createContext<ConnectContextValue | null>(null);
 
 type ProviderProps = {
   instanceUrl: string;
+  /** Full CCP URL from the backend (overrides the URL derived from instanceUrl). */
+  ccpUrl?: string;
   region?: string;
+  loginPopup?: boolean;
+  loginPopupAutoClose?: boolean;
+  softphone?: boolean;
   children: ReactNode;
   headless?: boolean;
 };
@@ -152,7 +159,11 @@ function snapshotContact(
 
 export function ConnectProvider({
   instanceUrl,
+  ccpUrl,
   region,
+  loginPopup,
+  loginPopupAutoClose,
+  softphone,
   children,
   headless = true,
 }: ProviderProps) {
@@ -192,11 +203,22 @@ export function ConnectProvider({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chatSessionRef = useRef<any | null>(null);
   const currentContactRef = useRef<connect.Contact | null>(null);
+  // Prevents attachChatSession from registering duplicate onMessage handlers
+  // when both onAccepted and onConnected fire for the same chat contact.
+  const attachedChatContactIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!containerRef.current || !instanceUrl) return;
+    if (!containerRef.current) return;
+    if (!instanceUrl && !ccpUrl) return;
     try {
-      initializeCCP(containerRef.current, { instanceUrl, region });
+      initializeCCP(containerRef.current, {
+        instanceUrl,
+        ccpUrl,
+        region,
+        loginPopup,
+        loginPopupAutoClose,
+        softphone,
+      });
     } catch (e) {
       console.error("Failed to initialize CCP", e);
       setStatus("error");
@@ -247,9 +269,30 @@ export function ConnectProvider({
         console.warn("getDialableCountries unavailable", err);
       }
 
+      // The SDK fires STATE_CHANGE with `{ oldState, newState }` (strings),
+      // but in some versions `newState` is missing the agent's chosen state
+      // name when the change was self-initiated. Always re-read getState()
+      // so the UI reflects the source of truth.
       agent.onStateChange((evt) => {
-        setCurrentState({ name: evt.newState, type: evt.newState });
+        // eslint-disable-next-line no-console
+        console.info("[CCP] onStateChange", evt);
+        const live = agent.getState();
+        setCurrentState({
+          name: live?.name ?? evt.newState,
+          type: live?.type ?? evt.newState,
+        });
       });
+
+      // AGENT_UPDATE fires on every snapshot change — broader net than
+      // STATE_CHANGE — so use it as a redundant source of truth.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyAgent = agent as any;
+      if (typeof anyAgent.onRefresh === "function") {
+        anyAgent.onRefresh(() => {
+          const live = agent.getState();
+          if (live) setCurrentState({ name: live.name, type: live.type });
+        });
+      }
 
       agent.onMuteToggle((obj) => {
         setIsMuted(Boolean(obj.muted));
@@ -293,7 +336,10 @@ export function ConnectProvider({
         if (c.getType() === "chat") attachChatSession(c);
       });
 
-      const finalize = (outcome: string) => {
+      let historyPersisted = false;
+      const persistHistory = (outcome: string) => {
+        if (historyPersisted) return;
+        historyPersisted = true;
         const endedAt = Date.now();
         const handleSeconds = contactAcceptedAt
           ? Math.max(0, (endedAt - contactAcceptedAt) / 1000)
@@ -320,21 +366,44 @@ export function ConnectProvider({
             totalHandleSeconds: prev.totalHandleSeconds + handleSeconds,
           }));
         }
+      };
 
+      // Call ended but contact may still be in After-Contact-Work — keep the
+      // contact in state so the UI can offer a "Close contact" action. Only
+      // tear down when the SDK actually destroys the contact.
+      c.onEnded(() => {
+        persistHistory("Ended");
+        setContact(snapshotContact(c, contactArrivedAt, contactAcceptedAt));
+        // Chat session ends with the call — clear it so we don't reuse.
+        teardownChat();
+      });
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const anyC = c as any;
+      if (typeof anyC.onMissed === "function") {
+        anyC.onMissed(() => {
+          persistHistory("Missed");
+          setContact(snapshotContact(c, contactArrivedAt, contactAcceptedAt));
+        });
+      }
+
+      c.onDestroy(() => {
+        persistHistory("Destroyed");
         currentContactRef.current = null;
         teardownChat();
         setContact(null);
         setContactAttributes({});
         setIsMuted(false);
         setIsOnHold(false);
-      };
-
-      c.onEnded(() => finalize("Ended"));
-      c.onDestroy(() => finalize("Destroyed"));
+      });
     });
-  }, [instanceUrl, region]);
+  }, [instanceUrl, ccpUrl, region, loginPopup, loginPopupAutoClose, softphone]);
 
   const attachChatSession = useCallback(async (c: connect.Contact) => {
+    const contactId = c.getContactId();
+    // Both onAccepted and onConnected fire for chat; only attach once.
+    if (attachedChatContactIdRef.current === contactId) return;
+    attachedChatContactIdRef.current = contactId;
     try {
       const session = await getChatSession(c);
       chatSessionRef.current = session;
@@ -343,16 +412,20 @@ export function ConnectProvider({
         const transcript = await session.getTranscript({ maxResults: 100 });
         const items =
           transcript?.data?.Transcript ?? transcript?.Transcript ?? [];
-        const seeded: ChatMessage[] = items.map(
-          (m: Record<string, unknown>, idx: number) => ({
+        const seeded: ChatMessage[] = items
+          .filter(
+            (m: Record<string, unknown>) =>
+              String(m.Type ?? "MESSAGE") === "MESSAGE" &&
+              String(m.Content ?? "").length > 0
+          )
+          .map((m: Record<string, unknown>, idx: number) => ({
             id: String(m.Id ?? `seed-${idx}`),
             from: mapRole(String(m.ParticipantRole ?? "")),
             participantRole: String(m.ParticipantRole ?? ""),
             content: String(m.Content ?? ""),
             contentType: String(m.ContentType ?? "text/plain"),
             timestamp: Date.parse(String(m.AbsoluteTime ?? "")) || Date.now(),
-          })
-        );
+          }));
         setChatMessages(seeded);
       } catch (err) {
         console.warn("Failed to load chat transcript", err);
@@ -361,16 +434,33 @@ export function ConnectProvider({
       session.onMessage((event: { data?: Record<string, unknown> }) => {
         const d = event?.data ?? {};
         if (String(d.Type ?? "MESSAGE") !== "MESSAGE") return;
+        const content = String(d.Content ?? "");
+        if (!content) return;
         const msg: ChatMessage = {
           id: String(d.Id ?? `${Date.now()}-${Math.random()}`),
           from: mapRole(String(d.ParticipantRole ?? "")),
           participantRole: String(d.ParticipantRole ?? ""),
-          content: String(d.Content ?? ""),
+          content,
           contentType: String(d.ContentType ?? "text/plain"),
-          timestamp:
-            Date.parse(String(d.AbsoluteTime ?? "")) || Date.now(),
+          timestamp: Date.parse(String(d.AbsoluteTime ?? "")) || Date.now(),
         };
-        setChatMessages((prev) => [...prev, msg]);
+        setChatMessages((prev) => {
+          // Already in the list (echo of a server-side id, or duplicate handler).
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          // Agent's own message echoes back through onMessage — replace the
+          // optimistic `local-*` entry instead of appending a second bubble.
+          if (msg.from === "agent") {
+            const idx = prev.findIndex(
+              (m) => m.id.startsWith("local-") && m.content === msg.content
+            );
+            if (idx !== -1) {
+              const next = prev.slice();
+              next[idx] = msg;
+              return next;
+            }
+          }
+          return [...prev, msg];
+        });
       });
     } catch (err) {
       console.warn("Could not attach chat session", err);
@@ -379,6 +469,7 @@ export function ConnectProvider({
 
   const teardownChat = useCallback(() => {
     chatSessionRef.current = null;
+    attachedChatContactIdRef.current = null;
     setChatMessages([]);
   }, []);
 
@@ -405,10 +496,19 @@ export function ConnectProvider({
     []
   );
   const hangUp = useCallback(() => hangUpCurrentContact(), []);
-  const changeState = useCallback(
-    (name: string): Promise<void> => setAgentState(name),
-    []
-  );
+  const closeContact = useCallback(() => clearCurrentContact(), []);
+  const changeState = useCallback(async (name: string): Promise<void> => {
+    await setAgentState(name);
+    // Belt-and-braces: re-read the agent's state immediately so the UI
+    // updates even if the onStateChange event never lands.
+    await new Promise<void>((resolve) => {
+      connect.agent((agent) => {
+        const live = agent.getState();
+        if (live) setCurrentState({ name: live.name, type: live.type });
+        resolve();
+      });
+    });
+  }, []);
   const toggleDebugCCP = useCallback(() => setDebugCCP((v) => !v), []);
   const accept = useCallback(() => acceptCurrentContact(), []);
   const reject = useCallback(() => rejectCurrentContact(), []);
@@ -499,6 +599,7 @@ export function ConnectProvider({
       dialQuickConnect,
       refreshQuickConnects,
       hangUp,
+      closeContact,
       changeState,
       debugCCP,
       toggleDebugCCP,
@@ -536,6 +637,7 @@ export function ConnectProvider({
       dialQuickConnect,
       refreshQuickConnects,
       hangUp,
+      closeContact,
       changeState,
       debugCCP,
       toggleDebugCCP,
