@@ -2,28 +2,35 @@ import { useConnect } from "../../Utils/ConnectProvider";
 import { formatSeconds } from "../../Utils/useElapsed";
 
 export default function TodayStats() {
-  const { agentStats } = useConnect();
+  const { agentStats, status } = useConnect();
 
   const items = [
     {
       label: "Handled",
       value: String(agentStats.contactsHandled),
+      hint: "this session",
       tone: "bg-connect-teal-soft text-connect-teal-dark",
     },
     {
-      label: "CSAT",
-      value: `${agentStats.csatPercent}%`,
-      tone: "bg-connect-success-soft text-connect-success",
-    },
-    {
       label: "AHT",
-      value: formatSeconds(agentStats.avgHandleSeconds),
+      value:
+        agentStats.contactsHandled > 0
+          ? formatSeconds(agentStats.avgHandleSeconds)
+          : "—",
+      hint: "avg handle",
       tone: "bg-connect-blue-soft text-connect-blue-dark",
     },
     {
-      label: "In queue",
-      value: String(agentStats.inQueueCount),
-      tone: "bg-connect-warning-soft text-connect-warning",
+      label: "Open",
+      value: String(agentStats.openContacts),
+      hint: "live contacts",
+      tone: "bg-connect-success-soft text-connect-success",
+    },
+    {
+      label: "Queues",
+      value: String(agentStats.queueCount),
+      hint: "in profile",
+      tone: "bg-connect-purple-soft text-connect-purple",
     },
   ];
 
@@ -31,9 +38,11 @@ export default function TodayStats() {
     <section>
       <header className="mb-2 flex items-center justify-between px-1">
         <h3 className="text-[11px] font-semibold uppercase tracking-wider text-connect-text-secondary">
-          Today
+          Session
         </h3>
-        <span className="text-[10px] text-connect-text-disabled">Demo</span>
+        <span className="text-[10px] text-connect-text-disabled">
+          {status === "ready" ? "live" : "offline"}
+        </span>
       </header>
       <div className="grid grid-cols-2 gap-2">
         {items.map((i) => (
@@ -50,7 +59,7 @@ export default function TodayStats() {
             <span
               className={`mt-1 inline-block rounded-full px-1.5 py-0.5 text-[9px] font-medium ${i.tone}`}
             >
-              live
+              {i.hint}
             </span>
           </div>
         ))}

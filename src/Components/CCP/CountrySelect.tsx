@@ -5,9 +5,11 @@ import { ChevronDown, SearchIconSmall } from "./icons";
 type Props = {
   value: Country;
   onChange: (next: Country) => void;
+  /** ISO-2 codes the instance / routing profile allows. Empty array = no filter. */
+  allowedCodes?: string[];
 };
 
-export default function CountrySelect({ value, onChange }: Props) {
+export default function CountrySelect({ value, onChange, allowedCodes }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -20,16 +22,23 @@ export default function CountrySelect({ value, onChange }: Props) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  const allowed = useMemo(() => {
+    if (!allowedCodes || allowedCodes.length === 0) return COUNTRIES;
+    const set = new Set(allowedCodes.map((c) => c.toUpperCase()));
+    const subset = COUNTRIES.filter((c) => set.has(c.code));
+    return subset.length > 0 ? subset : COUNTRIES;
+  }, [allowedCodes]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return COUNTRIES;
-    return COUNTRIES.filter(
+    if (!q) return allowed;
+    return allowed.filter(
       (c) =>
         c.name.toLowerCase().includes(q) ||
         c.code.toLowerCase().includes(q) ||
         c.dialCode.replace("+", "").includes(q.replace("+", ""))
     );
-  }, [query]);
+  }, [allowed, query]);
 
   return (
     <div ref={containerRef} className="relative">

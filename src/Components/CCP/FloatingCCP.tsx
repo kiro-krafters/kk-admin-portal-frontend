@@ -28,7 +28,12 @@ function initialPosition(): Position {
   });
 }
 
-export default function FloatingCCP() {
+type FloatingCCPProps = {
+  /** Hide the bottom-right idle FAB but keep the panel mountable via context. */
+  hideIdleFab?: boolean;
+};
+
+export default function FloatingCCP({ hideIdleFab = false }: FloatingCCPProps) {
   const { isOpen, isMinimized, open, close, minimize, restore } = useCCPWindow();
   const [pos, setPos] = useState<Position>(initialPosition);
   const { contact } = useConnect();
@@ -68,6 +73,7 @@ export default function FloatingCCP() {
   };
 
   if (!isOpen) {
+    if (hideIdleFab) return null;
     return (
       <button
         type="button"

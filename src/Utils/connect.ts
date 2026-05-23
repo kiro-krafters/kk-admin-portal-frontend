@@ -49,6 +49,21 @@ export function initializeCCP(
   });
 }
 
+function findAgentState(
+  agent: connect.Agent,
+  name: string
+): connect.AgentStateDefinition | undefined {
+  return agent
+    .getAgentStates()
+    .find((s) => s.name.toLowerCase() === name.toLowerCase());
+}
+
+/**
+ * Connect rejects outbound `agent.connect()` calls when the agent isn't in a
+ * routable state. Most freshly-loaded agents land in "Offline", which is why
+ * clicking Call appears to do nothing. We optimistically flip to Available
+ * first when needed, then dial.
+ */
 export function dialPhoneNumber(rawNumber: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const number = rawNumber.replace(/\s|-/g, "");
@@ -56,12 +71,79 @@ export function dialPhoneNumber(rawNumber: string): Promise<void> {
       reject(new Error("Phone number is empty"));
       return;
     }
+    if (!/^\+\d{7,15}$/.test(number)) {
+      reject(
+        new Error(
+          `Number "${number}" is not E.164 (needs +<country><subscriber>, 7–15 digits).`
+        )
+      );
+      return;
+    }
+
     connect.agent((agent) => {
-      const endpoint = connect.Endpoint.byPhoneNumber(number);
-      agent.connect(endpoint, {
-        success: () => resolve(),
-        failure: (err) => reject(new Error(String(err))),
-      });
+      const startState = agent.getState()?.name ?? "(unknown)";
+      // eslint-disable-next-line no-console
+      console.info("[CCP] dial attempt", { number, agentState: startState });
+
+      const doDial = () => {
+        let endpoint: connect.Endpoint;
+        try {
+          endpoint = connect.Endpoint.byPhoneNumber(number);
+        } catch (err) {
+          // eslint-disable-next-line no-console
+          console.error("[CCP] failed to create endpoint", err);
+          reject(new Error(`Invalid phone number: ${number}`));
+          return;
+        }
+        agent.connect(endpoint, {
+          success: () => {
+            // eslint-disable-next-line no-console
+            console.info("[CCP] dial success", { number });
+            resolve();
+          },
+          failure: (err) => {
+            // eslint-disable-next-line no-console
+            console.error("[CCP] dial failure", err);
+            const msg =
+              typeof err === "string"
+                ? err
+                : err && typeof err === "object"
+                ? JSON.stringify(err)
+                : "Unknown failure from agent.connect";
+            reject(new Error(msg));
+          },
+        });
+      };
+
+      // Auto-flip Offline → Available, otherwise outbound is blocked silently.
+      if (startState.toLowerCase() === "offline") {
+        const available = findAgentState(agent, "Available");
+        if (!available) {
+          reject(
+            new Error(
+              "Agent has no Available state in routing profile — cannot place outbound."
+            )
+          );
+          return;
+        }
+        // eslint-disable-next-line no-console
+        console.info("[CCP] switching state Offline → Available before dialing");
+        agent.setState(available, {
+          success: () => doDial(),
+          failure: (err) => {
+            // eslint-disable-next-line no-console
+            console.error("[CCP] setState(Available) failed", err);
+            reject(
+              new Error(
+                "Could not switch the agent to Available before dialing."
+              )
+            );
+          },
+        });
+        return;
+      }
+
+      doDial();
     });
   });
 }
@@ -76,12 +158,35 @@ export function hangUpCurrentContact(): void {
   });
 }
 
-export function setAgentState(stateName: string): void {
-  connect.agent((agent) => {
-    const target = agent
-      .getAgentStates()
-      .find((s) => s.name.toLowerCase() === stateName.toLowerCase());
-    if (target) agent.setState(target);
+export function setAgentState(stateName: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    connect.agent((agent) => {
+      const target = agent
+        .getAgentStates()
+        .find((s) => s.name.toLowerCase() === stateName.toLowerCase());
+      if (!target) {
+        reject(
+          new Error(
+            `State "${stateName}" is not in the agent's routing profile.`
+          )
+        );
+        return;
+      }
+      // eslint-disable-next-line no-console
+      console.info("[CCP] setState", stateName);
+      agent.setState(target, {
+        success: () => {
+          // eslint-disable-next-line no-console
+          console.info("[CCP] setState success", stateName);
+          resolve();
+        },
+        failure: (err) => {
+          // eslint-disable-next-line no-console
+          console.error("[CCP] setState failure", err);
+          reject(new Error(typeof err === "string" ? err : String(err)));
+        },
+      });
+    });
   });
 }
 

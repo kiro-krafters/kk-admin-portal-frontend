@@ -32,7 +32,7 @@ function Shell() {
           <Outlet />
         </main>
       </div>
-      {!onWorkspace && <FloatingCCP />}
+      <FloatingCCP hideIdleFab={onWorkspace} />
     </div>
   );
 }

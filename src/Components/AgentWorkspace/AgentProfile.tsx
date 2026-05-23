@@ -14,7 +14,8 @@ function initialsFromIdentity(name: string | null, email: string | null) {
 }
 
 export default function AgentProfile() {
-  const { agentName, agentEmail, agentRole, status } = useConnect();
+  const { agentName, agentEmail, agentRole, agentExtension, status } =
+    useConnect();
   const initials = initialsFromIdentity(agentName, agentEmail);
   const displayName =
     agentName ??
@@ -41,9 +42,19 @@ export default function AgentProfile() {
             {agentEmail}
           </p>
         )}
-        <span className="mt-1 inline-flex rounded-full bg-connect-teal-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-connect-teal-dark">
-          {agentRole}
-        </span>
+        <div className="mt-1 flex items-center gap-1">
+          <span
+            className="inline-flex max-w-[10rem] truncate rounded-full bg-connect-teal-soft px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-connect-teal-dark"
+            title="Routing profile"
+          >
+            {agentRole}
+          </span>
+          {agentExtension && (
+            <span className="inline-flex rounded-full bg-connect-bg-alt px-2 py-0.5 text-[10px] font-medium text-connect-text-secondary">
+              ext {agentExtension}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

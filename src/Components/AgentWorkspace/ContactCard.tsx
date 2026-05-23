@@ -18,8 +18,14 @@ export default function ContactCard({ contact, attributes }: Props) {
     attributes.CustomerName ||
     attributes.name ||
     (isChat ? "Chat customer" : contact.phoneNumber ?? "Unknown caller");
-  const policyNumber = attributes.policyNumber || attributes.PolicyNumber || attributes.policy;
-  const queueName = attributes.queueName || attributes.Queue || attributes.queue;
+  const policyNumber =
+    attributes.policyNumber || attributes.PolicyNumber || attributes.policy;
+  // Prefer the real queue from contact.getQueue(); fall back to flow attribute.
+  const queueName =
+    contact.queueName ||
+    attributes.queueName ||
+    attributes.Queue ||
+    attributes.queue;
 
   const stateLabel =
     contact.state === "incoming"

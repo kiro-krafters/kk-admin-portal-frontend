@@ -24,11 +24,6 @@ export default function CCP() {
 
   const [activeTab, setActiveTab] = useState<CCPTab>("phone");
   const [error, setError] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string>("Offline");
-
-  useEffect(() => {
-    if (currentState?.name) setSelectedStatus(currentState.name);
-  }, [currentState?.name]);
 
   useEffect(() => {
     if (contact) setActiveTab("phone");
@@ -40,9 +35,16 @@ export default function CCP() {
       : DEFAULT_STATES
   ).filter((s, i, arr) => arr.indexOf(s) === i);
 
-  const handleStatusChange = (next: string) => {
-    setSelectedStatus(next);
-    changeState(next);
+  // Drive the picker from the real agent state — no optimistic local copy.
+  const statusName = currentState?.name ?? "Offline";
+
+  const handleStatusChange = async (next: string) => {
+    setError(null);
+    try {
+      await changeState(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not change status");
+    }
   };
 
   const handleCall = async (phoneNumber: string) => {
@@ -59,7 +61,7 @@ export default function CCP() {
       <CCPHeader
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        statusName={selectedStatus}
+        statusName={statusName}
         statusOptions={options}
         onStatusChange={handleStatusChange}
       />
@@ -103,8 +105,21 @@ export default function CCP() {
       </div>
 
       {error && (
-        <div className="border-t border-connect-error/40 bg-connect-error-soft px-3 py-2 text-xs text-connect-error">
-          {error}
+        <div className="flex items-start gap-2 border-t-2 border-connect-error bg-connect-error-soft px-3 py-2.5 text-xs">
+          <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-connect-error text-[10px] font-bold text-white">
+            !
+          </span>
+          <div className="flex-1">
+            <p className="font-semibold text-connect-error">Call failed</p>
+            <p className="mt-0.5 break-words text-connect-error">{error}</p>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-connect-error underline"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
     </div>

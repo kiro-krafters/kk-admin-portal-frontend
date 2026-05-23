@@ -1,12 +1,18 @@
-import { useState } from "react";
-import { DEFAULT_COUNTRY, type Country } from "../../Utils/countries";
+import { useEffect, useState } from "react";
+import { useConnect } from "../../Utils/ConnectProvider";
+import {
+  COUNTRIES,
+  DEFAULT_COUNTRY,
+  findCountryByCode,
+  type Country,
+} from "../../Utils/countries";
 import CountrySelect from "./CountrySelect";
 import Dialpad from "./Dialpad";
 import { CloseIcon, PhoneIcon, QuickConnectIcon } from "./icons";
 
 type Props = {
   onClose: () => void;
-  onCall: (e164Number: string) => void;
+  onCall: (e164Number: string) => Promise<void> | void;
   onQuickConnects?: () => void;
   disableCall?: boolean;
 };
@@ -17,8 +23,22 @@ export default function NumberPad({
   onQuickConnects,
   disableCall,
 }: Props) {
+  const { dialableCountries } = useConnect();
   const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
   const [number, setNumber] = useState("");
+  const [dialing, setDialing] = useState(false);
+
+  // If the agent's routing profile restricts dialable countries, snap the
+  // currently selected country to the first one the instance actually permits.
+  useEffect(() => {
+    if (!dialableCountries || dialableCountries.length === 0) return;
+    const allowed = new Set(dialableCountries.map((c) => c.toUpperCase()));
+    if (allowed.has(country.code)) return;
+    const fallback =
+      COUNTRIES.find((c) => allowed.has(c.code)) ??
+      findCountryByCode(dialableCountries[0]);
+    if (fallback) setCountry(fallback);
+  }, [dialableCountries, country.code]);
 
   const trimmed = number.trim().replace(/[^\d+]/g, "");
   const callDisabled = disableCall || trimmed.length === 0;
@@ -27,12 +47,17 @@ export default function NumberPad({
     setNumber((prev) => prev + digit);
   };
 
-  const handleCall = () => {
-    if (callDisabled) return;
+  const handleCall = async () => {
+    if (callDisabled || dialing) return;
     const e164 = trimmed.startsWith("+")
       ? trimmed
       : `${country.dialCode}${trimmed}`;
-    onCall(e164);
+    setDialing(true);
+    try {
+      await onCall(e164);
+    } finally {
+      setDialing(false);
+    }
   };
 
   return (
@@ -59,7 +84,11 @@ export default function NumberPad({
           Phone number
         </label>
         <div className="mt-1 flex items-center gap-1 rounded-md border border-connect-border px-2 py-1.5 focus-within:border-connect-teal focus-within:ring-1 focus-within:ring-connect-teal">
-          <CountrySelect value={country} onChange={setCountry} />
+          <CountrySelect
+            value={country}
+            onChange={setCountry}
+            allowedCodes={dialableCountries}
+          />
           <span className="h-5 w-px bg-connect-border" />
           <input
             id="ccp-phone-number"
@@ -87,16 +116,16 @@ export default function NumberPad({
         </button>
         <button
           type="button"
-          disabled={callDisabled}
+          disabled={callDisabled || dialing}
           onClick={handleCall}
           className={`flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-            callDisabled
+            callDisabled || dialing
               ? "cursor-not-allowed bg-connect-bg-alt text-connect-text-disabled"
               : "bg-connect-teal text-white hover:bg-connect-teal-dark"
           }`}
         >
           <PhoneIcon className="h-4 w-4" />
-          Call
+          {dialing ? "Calling…" : "Call"}
         </button>
       </footer>
     </section>

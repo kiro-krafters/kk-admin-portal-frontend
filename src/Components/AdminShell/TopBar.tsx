@@ -10,7 +10,7 @@ type Props = {
 export default function TopBar({
   instanceAlias = "kk-contact-center-dev",
 }: Props) {
-  const { agentName, status, contact } = useConnect();
+  const { agentName, status, contact, debugCCP, toggleDebugCCP } = useConnect();
   const { openNumberPad } = useCCPWindow();
 
   return (
@@ -51,6 +51,19 @@ export default function TopBar({
           {contact && (
             <span className="ml-1 inline-flex h-2 w-2 rounded-full bg-white" />
           )}
+        </button>
+
+        <button
+          type="button"
+          onClick={toggleDebugCCP}
+          title="Show / hide the real Amazon Connect CCP iframe — useful for debugging the instance."
+          className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-semibold transition-colors ${
+            debugCCP
+              ? "border-connect-teal bg-connect-teal-soft text-connect-teal-dark"
+              : "border-connect-border bg-white text-connect-text-secondary hover:border-connect-teal hover:text-connect-teal-dark"
+          }`}
+        >
+          {debugCCP ? "Hide Connect CCP" : "Show Connect CCP"}
         </button>
 
         <span

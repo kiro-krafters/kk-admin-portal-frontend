@@ -36,11 +36,13 @@ type AgentStateInfo = { name: string; type?: string };
 export type ContactInfo = {
   contactId: string;
   channel: string; // 'voice' | 'chat' | 'task'
-  state: string; // 'incoming' | 'connecting' | 'connected' | 'ended' | ...
+  state: string;
   phoneNumber: string | null;
   isInbound: boolean;
   startedAt: number;
   acceptedAt: number | null;
+  queueName: string | null;
+  queueArn: string | null;
 };
 
 export type ConnectionStatus =
@@ -51,31 +53,33 @@ export type ConnectionStatus =
 
 export type QueueMetric = {
   queueId: string;
+  queueArn: string;
   name: string;
-  inQueue: number;
-  longestWait: string;
+  inQueue: number; // currently assigned to THIS agent for this queue
 };
 
 export type AgentStats = {
   contactsHandled: number;
-  csatPercent: number;
   avgHandleSeconds: number;
-  inQueueCount: number;
+  openContacts: number;
+  queueCount: number;
 };
 
 export type ContactHistoryEntry = {
   contactId: string;
   channel: string;
-  startedAt: string;
+  startedAt: number;
   durationSeconds: number;
   outcome: string;
+  queueName: string | null;
 };
 
 type ConnectContextValue = {
   status: ConnectionStatus;
   agentName: string | null;
   agentEmail: string | null;
-  agentRole: string;
+  agentRole: string; // routing-profile name when available
+  agentExtension: string | null;
   currentState: AgentStateInfo | null;
   availableStates: AgentStateInfo[];
   contact: ContactInfo | null;
@@ -84,9 +88,11 @@ type ConnectContextValue = {
   isOnHold: boolean;
   quickConnects: QuickConnectEntry[];
   quickConnectsLoading: boolean;
+  dialableCountries: string[];
   queueMetrics: QueueMetric[];
   agentStats: AgentStats;
   contactHistory: ContactHistoryEntry[];
+  /** null = Contact Lens not wired (requires server-side stream subscription). */
   sentiment: { score: number; label: "positive" | "neutral" | "negative" } | null;
   chatMessages: ChatMessage[];
   notes: Record<string, string>;
@@ -94,7 +100,9 @@ type ConnectContextValue = {
   dialQuickConnect: (entry: QuickConnectEntry) => Promise<void>;
   refreshQuickConnects: () => Promise<void>;
   hangUp: () => void;
-  changeState: (name: string) => void;
+  changeState: (name: string) => Promise<void>;
+  debugCCP: boolean;
+  toggleDebugCCP: () => void;
   accept: () => void;
   reject: () => void;
   toggleMute: () => void;
@@ -117,58 +125,30 @@ type ProviderProps = {
 
 function snapshotContact(
   c: connect.Contact,
+  startedAt: number,
   acceptedAt: number | null
 ): ContactInfo {
   const conn = c.getActiveInitialConnection() ?? c.getInitialConnection();
   const endpoint = conn?.getEndpoint();
+  const q = (() => {
+    try {
+      return c.getQueue();
+    } catch {
+      return undefined;
+    }
+  })();
   return {
     contactId: c.getContactId(),
     channel: c.getType(),
     state: c.getState().type,
     phoneNumber: endpoint?.phoneNumber ?? null,
     isInbound: c.isInbound(),
-    startedAt: Date.now(),
+    startedAt,
     acceptedAt,
+    queueName: q?.name ?? null,
+    queueArn: q?.queueARN ?? null,
   };
 }
-
-// Mocked stats / history until backend metrics endpoints are wired.
-const MOCK_AGENT_STATS: AgentStats = {
-  contactsHandled: 23,
-  csatPercent: 92,
-  avgHandleSeconds: 247,
-  inQueueCount: 7,
-};
-
-const MOCK_QUEUE_METRICS: QueueMetric[] = [
-  { queueId: "q-policy", name: "Policy inquiries", inQueue: 3, longestWait: "0:47" },
-  { queueId: "q-claims", name: "Claims", inQueue: 4, longestWait: "1:34" },
-  { queueId: "q-billing", name: "Billing", inQueue: 0, longestWait: "—" },
-];
-
-const MOCK_HISTORY: ContactHistoryEntry[] = [
-  {
-    contactId: "c-1782",
-    channel: "Voice",
-    startedAt: "2026-05-22 14:22",
-    durationSeconds: 287,
-    outcome: "Resolved · Claim status",
-  },
-  {
-    contactId: "c-1641",
-    channel: "Chat",
-    startedAt: "2026-05-20 10:08",
-    durationSeconds: 412,
-    outcome: "Policy change submitted",
-  },
-  {
-    contactId: "c-1518",
-    channel: "Voice",
-    startedAt: "2026-05-17 17:55",
-    durationSeconds: 156,
-    outcome: "Premium payment",
-  },
-];
 
 export function ConnectProvider({
   instanceUrl,
@@ -182,6 +162,8 @@ export function ConnectProvider({
   );
   const [agentName, setAgentName] = useState<string | null>(null);
   const [agentEmail, setAgentEmail] = useState<string | null>(null);
+  const [agentRole, setAgentRole] = useState<string>("Agent");
+  const [agentExtension, setAgentExtension] = useState<string | null>(null);
   const [currentState, setCurrentState] = useState<AgentStateInfo | null>(null);
   const [availableStates, setAvailableStates] = useState<AgentStateInfo[]>([]);
   const [contact, setContact] = useState<ContactInfo | null>(null);
@@ -192,11 +174,20 @@ export function ConnectProvider({
   const [isOnHold, setIsOnHold] = useState(false);
   const [quickConnects, setQuickConnects] = useState<QuickConnectEntry[]>([]);
   const [quickConnectsLoading, setQuickConnectsLoading] = useState(false);
+  const [dialableCountries, setDialableCountries] = useState<string[]>([]);
+  const [debugCCP, setDebugCCP] = useState(false);
+  const [routingQueues, setRoutingQueues] = useState<
+    { queueId: string; queueArn: string; name: string }[]
+  >([]);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [notes, setNotes] = useState<Record<string, string>>({});
-  const [sentiment, setSentiment] = useState<
-    { score: number; label: "positive" | "neutral" | "negative" } | null
-  >(null);
+  const [sessionHistory, setSessionHistory] = useState<ContactHistoryEntry[]>(
+    []
+  );
+  const [sessionTotals, setSessionTotals] = useState({
+    handled: 0,
+    totalHandleSeconds: 0,
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const chatSessionRef = useRef<any | null>(null);
@@ -215,15 +206,46 @@ export function ConnectProvider({
     connect.agent((agent) => {
       setStatus("ready");
       setAgentName(agent.getName());
-      // The streams Agent has a getConfiguration() that includes the username (login).
+
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cfg = (agent as any).getConfiguration?.();
+      const cfg = (agent as any).getConfiguration?.() as
+        | connect.AgentConfiguration
+        | undefined;
       if (cfg?.username) setAgentEmail(cfg.username);
+      if (cfg?.extension) setAgentExtension(cfg.extension);
+
+      try {
+        const rp = agent.getRoutingProfile();
+        if (rp?.name) setAgentRole(rp.name);
+        if (Array.isArray(rp?.queues)) {
+          setRoutingQueues(
+            rp.queues
+              .filter((q) => q && q.queueARN)
+              .map((q) => ({
+                queueId: q.queueId ?? q.queueARN,
+                queueArn: q.queueARN,
+                name: q.name,
+              }))
+          );
+        }
+      } catch (err) {
+        console.warn("Failed to read routing profile", err);
+      }
+
       setAvailableStates(
         agent.getAgentStates().map((s) => ({ name: s.name, type: s.type }))
       );
       const s = agent.getState();
       setCurrentState({ name: s.name, type: s.type });
+
+      try {
+        const codes = agent.getDialableCountries();
+        if (Array.isArray(codes)) {
+          setDialableCountries(codes.map((c) => c.toUpperCase()));
+        }
+      } catch (err) {
+        console.warn("getDialableCountries unavailable", err);
+      }
 
       agent.onStateChange((evt) => {
         setCurrentState({ name: evt.newState, type: evt.newState });
@@ -236,15 +258,13 @@ export function ConnectProvider({
 
     connect.contact((c) => {
       currentContactRef.current = c;
+      const contactArrivedAt = Date.now();
+      let contactAcceptedAt: number | null = null;
 
       const seedAttributes = () => setContactAttributes(readContactAttributes(c));
-      const update = (acceptedAt?: number | null) => {
-        setContact((prev) =>
-          snapshotContact(
-            c,
-            acceptedAt !== undefined ? acceptedAt : prev?.acceptedAt ?? null
-          )
-        );
+      const update = (newAccepted?: number) => {
+        if (typeof newAccepted === "number") contactAcceptedAt = newAccepted;
+        setContact(snapshotContact(c, contactArrivedAt, contactAcceptedAt));
         const conn = c.getAgentConnection();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const anyConn = conn as any;
@@ -265,33 +285,52 @@ export function ConnectProvider({
       c.onAccepted(() => {
         seedAttributes();
         update(Date.now());
-        if (c.getType() === "chat") {
-          attachChatSession(c);
-        }
+        if (c.getType() === "chat") attachChatSession(c);
       });
       c.onConnected(() => {
         seedAttributes();
         update(Date.now());
-        if (c.getType() === "chat") {
-          attachChatSession(c);
+        if (c.getType() === "chat") attachChatSession(c);
+      });
+
+      const finalize = (outcome: string) => {
+        const endedAt = Date.now();
+        const handleSeconds = contactAcceptedAt
+          ? Math.max(0, (endedAt - contactAcceptedAt) / 1000)
+          : 0;
+        let queueName: string | null = null;
+        try {
+          queueName = c.getQueue()?.name ?? null;
+        } catch {
+          /* noop */
         }
-      });
-      c.onEnded(() => {
+        // Only record contacts the agent actually engaged with (accepted).
+        if (contactAcceptedAt !== null) {
+          const entry: ContactHistoryEntry = {
+            contactId: c.getContactId(),
+            channel: c.getType(),
+            startedAt: contactArrivedAt,
+            durationSeconds: handleSeconds,
+            outcome,
+            queueName,
+          };
+          setSessionHistory((prev) => [entry, ...prev].slice(0, 20));
+          setSessionTotals((prev) => ({
+            handled: prev.handled + 1,
+            totalHandleSeconds: prev.totalHandleSeconds + handleSeconds,
+          }));
+        }
+
+        currentContactRef.current = null;
         teardownChat();
         setContact(null);
         setContactAttributes({});
         setIsMuted(false);
         setIsOnHold(false);
-        setSentiment(null);
-      });
-      c.onDestroy(() => {
-        teardownChat();
-        setContact(null);
-        setContactAttributes({});
-        setIsMuted(false);
-        setIsOnHold(false);
-        setSentiment(null);
-      });
+      };
+
+      c.onEnded(() => finalize("Ended"));
+      c.onDestroy(() => finalize("Destroyed"));
     });
   }, [instanceUrl, region]);
 
@@ -300,10 +339,10 @@ export function ConnectProvider({
       const session = await getChatSession(c);
       chatSessionRef.current = session;
 
-      // Seed transcript if available
       try {
         const transcript = await session.getTranscript({ maxResults: 100 });
-        const items = transcript?.data?.Transcript ?? transcript?.Transcript ?? [];
+        const items =
+          transcript?.data?.Transcript ?? transcript?.Transcript ?? [];
         const seeded: ChatMessage[] = items.map(
           (m: Record<string, unknown>, idx: number) => ({
             id: String(m.Id ?? `seed-${idx}`),
@@ -321,7 +360,6 @@ export function ConnectProvider({
 
       session.onMessage((event: { data?: Record<string, unknown> }) => {
         const d = event?.data ?? {};
-        // Only treat MESSAGE content as chat messages; ignore typing/events here.
         if (String(d.Type ?? "MESSAGE") !== "MESSAGE") return;
         const msg: ChatMessage = {
           id: String(d.Id ?? `${Date.now()}-${Math.random()}`),
@@ -358,28 +396,8 @@ export function ConnectProvider({
   }, []);
 
   useEffect(() => {
-    if (status === "ready") {
-      refreshQuickConnects();
-    }
+    if (status === "ready") refreshQuickConnects();
   }, [status, refreshQuickConnects]);
-
-  // Lightweight simulated sentiment while no Contact Lens backend is wired —
-  // it sways gently around neutral so the UI feels alive during a contact.
-  useEffect(() => {
-    if (!contact || contact.state !== "connected") {
-      setSentiment(null);
-      return;
-    }
-    let score = 0.6;
-    setSentiment({ score, label: "positive" });
-    const id = window.setInterval(() => {
-      score = Math.max(0, Math.min(1, score + (Math.random() - 0.5) * 0.15));
-      const label: "positive" | "neutral" | "negative" =
-        score > 0.6 ? "positive" : score < 0.4 ? "negative" : "neutral";
-      setSentiment({ score, label });
-    }, 4000);
-    return () => window.clearInterval(id);
-  }, [contact]);
 
   const dial = useCallback((number: string) => dialPhoneNumber(number), []);
   const dialQuickConnect = useCallback(
@@ -387,7 +405,11 @@ export function ConnectProvider({
     []
   );
   const hangUp = useCallback(() => hangUpCurrentContact(), []);
-  const changeState = useCallback((name: string) => setAgentState(name), []);
+  const changeState = useCallback(
+    (name: string): Promise<void> => setAgentState(name),
+    []
+  );
+  const toggleDebugCCP = useCallback(() => setDebugCCP((v) => !v), []);
   const accept = useCallback(() => acceptCurrentContact(), []);
   const reject = useCallback(() => rejectCurrentContact(), []);
   const toggleMute = useCallback(() => toggleMuteRaw(isMuted), [isMuted]);
@@ -398,8 +420,6 @@ export function ConnectProvider({
   const sendDtmf = useCallback((d: string) => sendDigit(d), []);
   const sendChat = useCallback(async (text: string) => {
     if (!chatSessionRef.current || !text.trim()) return;
-    // Optimistically append the agent message; the streams onMessage callback
-    // will also fire with the persisted version, so we dedupe by content+ts.
     const optimistic: ChatMessage = {
       id: `local-${Date.now()}`,
       from: "agent",
@@ -428,12 +448,38 @@ export function ConnectProvider({
     setNotes((prev) => ({ ...prev, [contactId]: text }));
   }, []);
 
+  // Derived: real queue metrics from routing profile + current contact.
+  const queueMetrics: QueueMetric[] = useMemo(() => {
+    return routingQueues.map((q) => ({
+      queueId: q.queueId,
+      queueArn: q.queueArn,
+      name: q.name,
+      inQueue: contact?.queueArn === q.queueArn ? 1 : 0,
+    }));
+  }, [routingQueues, contact]);
+
+  const agentStats: AgentStats = useMemo(
+    () => ({
+      contactsHandled: sessionTotals.handled,
+      avgHandleSeconds:
+        sessionTotals.handled > 0
+          ? Math.round(
+              sessionTotals.totalHandleSeconds / sessionTotals.handled
+            )
+          : 0,
+      openContacts: contact ? 1 : 0,
+      queueCount: routingQueues.length,
+    }),
+    [sessionTotals, contact, routingQueues.length]
+  );
+
   const value = useMemo<ConnectContextValue>(
     () => ({
       status,
       agentName,
       agentEmail,
-      agentRole: "Agent",
+      agentRole,
+      agentExtension,
       currentState,
       availableStates,
       contact,
@@ -442,10 +488,11 @@ export function ConnectProvider({
       isOnHold,
       quickConnects,
       quickConnectsLoading,
-      queueMetrics: MOCK_QUEUE_METRICS,
-      agentStats: MOCK_AGENT_STATS,
-      contactHistory: MOCK_HISTORY,
-      sentiment,
+      dialableCountries,
+      queueMetrics,
+      agentStats,
+      contactHistory: sessionHistory,
+      sentiment: null, // Contact Lens requires server-side stream
       chatMessages,
       notes,
       dial,
@@ -453,6 +500,8 @@ export function ConnectProvider({
       refreshQuickConnects,
       hangUp,
       changeState,
+      debugCCP,
+      toggleDebugCCP,
       accept,
       reject,
       toggleMute,
@@ -467,6 +516,8 @@ export function ConnectProvider({
       status,
       agentName,
       agentEmail,
+      agentRole,
+      agentExtension,
       currentState,
       availableStates,
       contact,
@@ -475,7 +526,10 @@ export function ConnectProvider({
       isOnHold,
       quickConnects,
       quickConnectsLoading,
-      sentiment,
+      dialableCountries,
+      queueMetrics,
+      agentStats,
+      sessionHistory,
       chatMessages,
       notes,
       dial,
@@ -483,6 +537,8 @@ export function ConnectProvider({
       refreshQuickConnects,
       hangUp,
       changeState,
+      debugCCP,
+      toggleDebugCCP,
       accept,
       reject,
       toggleMute,
@@ -500,12 +556,34 @@ export function ConnectProvider({
       <div
         ref={containerRef}
         id="connect-ccp-container"
-        className={
-          headless
-            ? "fixed -left-[9999px] top-0 h-[1px] w-[1px] overflow-hidden"
-            : "h-[600px] w-[400px]"
+        aria-hidden={!debugCCP}
+        style={
+          debugCCP
+            ? {
+                position: "fixed",
+                right: 24,
+                bottom: 24,
+                width: 400,
+                height: 600,
+                border: "2px solid #2563EB",
+                borderRadius: 8,
+                boxShadow: "0 16px 48px rgba(15,27,45,0.25)",
+                background: "#fff",
+                zIndex: 100,
+              }
+            : headless
+            ? {
+                position: "fixed",
+                right: 0,
+                bottom: 0,
+                width: 280,
+                height: 200,
+                opacity: 0,
+                pointerEvents: "none",
+                zIndex: -1,
+              }
+            : { width: 400, height: 600 }
         }
-        aria-hidden={headless}
       />
       {children}
     </ConnectContext.Provider>
