@@ -1,10 +1,10 @@
 import type { AgentStatus } from '../../mock/agents';
 
 const CONFIG: Record<AgentStatus, { bg: string; text: string; dot: string; label: string }> = {
-  available: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500', label: 'Available' },
-  busy:      { bg: 'bg-red-50',     text: 'text-red-600',     dot: 'bg-red-500',     label: 'On Contact' },
-  break:     { bg: 'bg-amber-50',   text: 'text-amber-600',   dot: 'bg-amber-400',   label: 'Break'      },
-  offline:   { bg: 'bg-slate-100',  text: 'text-slate-400',   dot: 'bg-slate-400',   label: 'Offline'    },
+  available: { bg: 'bg-connect-success-soft', text: 'text-connect-success', dot: 'bg-connect-success', label: 'Available'   },
+  busy:      { bg: 'bg-connect-error-soft',   text: 'text-connect-error',   dot: 'bg-connect-error',   label: 'On Contact'  },
+  break:     { bg: 'bg-connect-warning-soft', text: 'text-connect-warning', dot: 'bg-connect-warning', label: 'Break'        },
+  offline:   { bg: 'bg-connect-bg-alt',       text: 'text-connect-text-secondary', dot: 'bg-connect-text-disabled', label: 'Offline' },
 };
 
 export default function StatusPill({ status }: { status: AgentStatus }) {

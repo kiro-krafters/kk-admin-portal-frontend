@@ -19,19 +19,23 @@ export default function ConfigTab({ queues, agents, clSettings, onQueueChange, o
   return (
     <div className="space-y-6">
       {/* Summary stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
-          { icon: '📋', label: 'Active Queues', value: queues.filter(q => q.open).length, iconCls: 'bg-blue-50 text-blue-600' },
-          { icon: '👥', label: 'Total Agents', value: agents.length, iconCls: 'bg-emerald-50 text-emerald-600' },
-          { icon: '🔀', label: 'Routing Profiles', value: 3, iconCls: 'bg-amber-50 text-amber-600' },
+          { label: 'Active Queues', value: queues.filter(q => q.open).length, total: queues.length, iconBg: 'bg-connect-teal-soft', iconText: 'text-connect-teal-dark', icon: '📋' },
+          { label: 'Closed Queues', value: queues.filter(q => !q.open).length, total: queues.length, iconBg: 'bg-connect-error-soft', iconText: 'text-connect-error', icon: '🔒' },
+          { label: 'Total Agents', value: agents.length, total: null, iconBg: 'bg-connect-success-soft', iconText: 'text-connect-success', icon: '👥' },
+          { label: 'Routing Profiles', value: 3, total: null, iconBg: 'bg-connect-warning-soft', iconText: 'text-connect-warning', icon: '🔀' },
         ].map(s => (
-          <div key={s.label} className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl text-xl ${s.iconCls}`}>
+          <div key={s.label} className="flex items-center gap-3 rounded-xl border border-connect-border bg-connect-bg p-4 shadow-connect-card">
+            <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg text-lg ${s.iconBg} ${s.iconText}`}>
               {s.icon}
             </div>
             <div>
-              <div className="text-2xl font-extrabold text-slate-900">{s.value}</div>
-              <div className="text-xs text-slate-500">{s.label}</div>
+              <div className="text-2xl font-semibold text-connect-text">
+                {s.value}
+                {s.total !== null && <span className="ml-1 text-sm font-medium text-connect-text-secondary">/ {s.total}</span>}
+              </div>
+              <div className="text-xs text-connect-text-secondary">{s.label}</div>
             </div>
           </div>
         ))}

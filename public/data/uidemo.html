@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kiro Insurance — AI Contact Center</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0f1e3c;
+      --navy-mid: #162952;
+      --navy-light: #1e3a6e;
+      --blue: #1d5fcd;
+      --blue-light: #3b82f6;
+      --cyan: #06b6d4;
+      --teal: #0ea5e9;
+      --gold: #f59e0b;
+      --green: #10b981;
+      --red: #ef4444;
+      --orange: #f97316;
+      --white: #ffffff;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-400: #94a3b8;
+      --gray-500: #64748b;
+      --gray-600: #475569;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--gray-50); color: var(--gray-800); line-height: 1.5; }
+    button { cursor: pointer; font-family: inherit; }
+    input, select { font-family: inherit; }
+
+    /* ── GLOBAL APP SHELL ── */
+    .app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── APP SELECTOR TABS ── */
+    .app-switcher { background: var(--navy); padding: 0; display: flex; align-items: center; border-bottom: 2px solid var(--navy-light); position: sticky; top: 0; z-index: 1000; }
+    .switcher-brand { display: flex; align-items: center; gap: 10px; padding: 0 24px; border-right: 1px solid rgba(255,255,255,0.1); height: 52px; }
+    .brand-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--cyan), var(--blue)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .brand-name { color: white; font-weight: 700; font-size: 15px; letter-spacing: -0.3px; }
+    .brand-tag { color: var(--cyan); font-size: 11px; font-weight: 500; }
+    .switcher-tabs { display: flex; gap: 0; padding: 0 8px; }
+    .sw-tab { color: rgba(255,255,255,0.6); font-size: 13px; font-weight: 500; padding: 0 18px; height: 52px; display: flex; align-items: center; gap: 8px; border: none; background: none; transition: all 0.2s; border-bottom: 3px solid transparent; cursor: pointer; }
+    .sw-tab:hover { color: white; background: rgba(255,255,255,0.05); }
+    .sw-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); background: rgba(6,182,212,0.08); }
+    .sw-tab .tab-icon { font-size: 16px; }
+    .sw-badge { background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 10px; }
+
+    /* ══════════════════════════════════
+       VIEW 1: CUSTOMER PORTAL
+    ══════════════════════════════════ */
+    .portal-header { background: var(--navy); }
+    .portal-topbar { display: flex; align-items: center; justify-content: space-between; padding: 0 40px; height: 70px; max-width: 1280px; margin: 0 auto; width: 100%; }
+    .portal-logo { display: flex; align-items: center; gap: 12px; }
+    .portal-logo-icon { width: 44px; height: 44px; background: linear-gradient(135deg, var(--cyan) 0%, var(--blue) 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+    .portal-logo-text { color: white; }
+    .portal-logo-text .name { font-size: 20px; font-weight: 800; letter-spacing: -0.5px; }
+    .portal-logo-text .sub { font-size: 11px; color: var(--cyan); font-weight: 500; letter-spacing: 1px; text-transform: uppercase; }
+    .portal-nav { display: flex; align-items: center; gap: 6px; }
+    .portal-nav a { color: rgba(255,255,255,0.75); font-size: 14px; font-weight: 500; padding: 8px 14px; border-radius: 6px; text-decoration: none; transition: all 0.2s; }
+    .portal-nav a:hover { color: white; background: rgba(255,255,255,0.1); }
+    .portal-nav a.active { color: white; background: rgba(6,182,212,0.2); }
+    .portal-nav-cta { background: var(--cyan); color: var(--navy) !important; font-weight: 700 !important; padding: 8px 18px !important; border-radius: 8px !important; }
+    .portal-nav-cta:hover { background: #22d3ee !important; }
+
+    .portal-hero { background: linear-gradient(160deg, var(--navy) 0%, var(--navy-light) 50%, #1a4a8a 100%); padding: 80px 40px 100px; position: relative; overflow: hidden; }
+    .portal-hero::before { content: ''; position: absolute; top: -50%; right: -10%; width: 600px; height: 600px; background: radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%); pointer-events: none; }
+    .portal-hero::after { content: ''; position: absolute; bottom: -20%; left: 5%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(29,95,205,0.15) 0%, transparent 70%); pointer-events: none; }
+    .portal-hero-inner { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center; position: relative; z-index: 1; }
+    .hero-label { display: inline-flex; align-items: center; gap: 6px; background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); color: var(--cyan); font-size: 12px; font-weight: 600; padding: 5px 12px; border-radius: 20px; margin-bottom: 20px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .hero-title { font-size: 48px; font-weight: 800; color: white; line-height: 1.1; letter-spacing: -1px; margin-bottom: 20px; }
+    .hero-title span { background: linear-gradient(135deg, var(--cyan), var(--teal)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .hero-desc { font-size: 17px; color: rgba(255,255,255,0.7); line-height: 1.7; margin-bottom: 32px; max-width: 480px; }
+    .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-primary { background: linear-gradient(135deg, var(--cyan), var(--teal)); color: var(--navy); font-weight: 700; font-size: 15px; padding: 14px 28px; border-radius: 10px; border: none; transition: all 0.2s; box-shadow: 0 4px 20px rgba(6,182,212,0.4); }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(6,182,212,0.5); }
+    .btn-outline { background: rgba(255,255,255,0.08); color: white; font-weight: 600; font-size: 15px; padding: 14px 28px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s; }
+    .btn-outline:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.4); }
+    .hero-stats { display: flex; gap: 32px; margin-top: 40px; }
+    .hero-stat { }
+    .hero-stat .num { font-size: 28px; font-weight: 800; color: white; }
+    .hero-stat .lbl { font-size: 12px; color: rgba(255,255,255,0.55); font-weight: 500; margin-top: 2px; }
+    .hero-card { background: rgba(255,255,255,0.06); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; padding: 28px; }
+    .hc-header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+    .hc-status { width: 8px; height: 8px; background: var(--green); border-radius: 50%; box-shadow: 0 0 8px var(--green); }
+    .hc-title { color: white; font-weight: 600; font-size: 15px; }
+    .hc-subtitle { color: rgba(255,255,255,0.5); font-size: 12px; margin-left: auto; }
+    .hc-chat-messages { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+    .chat-msg { display: flex; gap: 8px; }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .chat-avatar { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .chat-avatar.bot { background: linear-gradient(135deg, var(--cyan), var(--blue)); color: white; }
+    .chat-avatar.user { background: rgba(255,255,255,0.15); color: white; font-size: 11px; }
+    .chat-bubble { max-width: 200px; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+    .chat-bubble.bot { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.9); border-bottom-left-radius: 4px; }
+    .chat-bubble.user { background: linear-gradient(135deg, var(--cyan), var(--teal)); color: var(--navy); font-weight: 500; border-bottom-right-radius: 4px; }
+    .hc-input { display: flex; gap: 8px; }
+    .hc-input input { flex: 1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 10px 14px; color: white; font-size: 13px; outline: none; }
+    .hc-input input::placeholder { color: rgba(255,255,255,0.35); }
+    .hc-send { background: var(--cyan); border: none; border-radius: 8px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; color: var(--navy); font-size: 16px; }
+
+    .portal-features { padding: 80px 40px; max-width: 1280px; margin: 0 auto; }
+    .section-label { font-size: 12px; font-weight: 700; color: var(--blue); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px; }
+    .section-title { font-size: 36px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.8px; margin-bottom: 14px; }
+    .section-desc { font-size: 16px; color: var(--gray-500); max-width: 560px; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+    .feature-card { background: white; border: 1px solid var(--gray-100); border-radius: 16px; padding: 28px; transition: all 0.2s; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .feature-card:hover { border-color: var(--blue-light); box-shadow: 0 8px 30px rgba(29,95,205,0.1); transform: translateY(-2px); }
+    .feature-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 18px; }
+    .feature-icon.blue { background: rgba(59,130,246,0.1); }
+    .feature-icon.cyan { background: rgba(6,182,212,0.1); }
+    .feature-icon.green { background: rgba(16,185,129,0.1); }
+    .feature-icon.gold { background: rgba(245,158,11,0.1); }
+    .feature-icon.red { background: rgba(239,68,68,0.08); }
+    .feature-icon.purple { background: rgba(139,92,246,0.1); }
+    .feature-title { font-size: 16px; font-weight: 700; color: var(--gray-900); margin-bottom: 8px; }
+    .feature-desc { font-size: 14px; color: var(--gray-500); line-height: 1.6; }
+    .feature-link { font-size: 13px; font-weight: 600; color: var(--blue); margin-top: 14px; display: inline-flex; align-items: center; gap: 4px; }
+
+    .portal-plans { background: linear-gradient(180deg, white 0%, var(--gray-50) 100%); padding: 80px 40px; }
+    .plans-inner { max-width: 1280px; margin: 0 auto; }
+    .plans-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 48px; }
+    .plan-card { background: white; border: 1px solid var(--gray-200); border-radius: 20px; padding: 32px; position: relative; }
+    .plan-card.featured { border-color: var(--blue); box-shadow: 0 0 0 1px var(--blue), 0 20px 60px rgba(29,95,205,0.15); }
+    .plan-badge { position: absolute; top: -13px; left: 50%; transform: translateX(-50%); background: var(--blue); color: white; font-size: 11px; font-weight: 700; padding: 4px 14px; border-radius: 20px; letter-spacing: 0.5px; text-transform: uppercase; }
+    .plan-icon { font-size: 36px; margin-bottom: 16px; }
+    .plan-name { font-size: 18px; font-weight: 800; color: var(--gray-900); margin-bottom: 6px; }
+    .plan-price { font-size: 36px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+    .plan-price span { font-size: 16px; font-weight: 500; color: var(--gray-400); }
+    .plan-desc { font-size: 13px; color: var(--gray-500); margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--gray-100); }
+    .plan-features { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; }
+    .plan-features li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gray-700); }
+    .plan-features li::before { content: '✓'; color: var(--green); font-weight: 700; flex-shrink: 0; }
+    .btn-plan { width: 100%; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: 700; border: none; }
+    .btn-plan.secondary { background: var(--gray-100); color: var(--gray-700); }
+    .btn-plan.primary { background: var(--blue); color: white; box-shadow: 0 4px 20px rgba(29,95,205,0.3); }
+
+    .portal-footer { background: var(--navy); padding: 60px 40px 32px; }
+    .footer-inner { max-width: 1280px; margin: 0 auto; }
+    .footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px; margin-bottom: 40px; }
+    .footer-brand .name { color: white; font-size: 20px; font-weight: 800; margin-bottom: 12px; }
+    .footer-brand p { color: rgba(255,255,255,0.5); font-size: 14px; line-height: 1.7; }
+    .footer-col h4 { color: white; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px; }
+    .footer-col a { display: block; color: rgba(255,255,255,0.5); font-size: 14px; margin-bottom: 8px; text-decoration: none; transition: color 0.2s; }
+    .footer-col a:hover { color: white; }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.1); padding-top: 24px; display: flex; align-items: center; justify-content: space-between; }
+    .footer-bottom p { color: rgba(255,255,255,0.4); font-size: 13px; }
+
+    .chat-float-btn { position: fixed; bottom: 28px; right: 28px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--cyan), var(--blue)); border: none; color: white; font-size: 26px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 30px rgba(6,182,212,0.5); z-index: 900; transition: all 0.3s; }
+    .chat-float-btn:hover { transform: scale(1.1); }
+    .chat-widget { position: fixed; bottom: 100px; right: 28px; width: 360px; background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); z-index: 901; overflow: hidden; border: 1px solid var(--gray-200); }
+    .cw-header { background: linear-gradient(135deg, var(--navy), var(--navy-light)); padding: 18px 20px; display: flex; align-items: center; gap: 12px; }
+    .cw-avatar { width: 40px; height: 40px; background: linear-gradient(135deg, var(--cyan), var(--blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+    .cw-info .name { color: white; font-size: 15px; font-weight: 700; }
+    .cw-info .status { color: var(--cyan); font-size: 12px; display: flex; align-items: center; gap: 4px; }
+    .cw-info .status::before { content: ''; width: 6px; height: 6px; background: var(--green); border-radius: 50%; }
+    .cw-close { margin-left: auto; background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 6px; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+    .cw-pre-form { padding: 24px; }
+    .cw-pre-form h3 { font-size: 17px; font-weight: 700; color: var(--gray-900); margin-bottom: 6px; }
+    .cw-pre-form p { font-size: 13px; color: var(--gray-500); margin-bottom: 20px; }
+    .form-field { margin-bottom: 14px; }
+    .form-field label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 6px; }
+    .form-field input { width: 100%; border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px 14px; font-size: 14px; outline: none; transition: border-color 0.2s; color: var(--gray-800); }
+    .form-field input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,95,205,0.08); }
+    .form-field select { width: 100%; border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px 14px; font-size: 14px; outline: none; color: var(--gray-800); background: white; }
+    .btn-start-chat { width: 100%; background: linear-gradient(135deg, var(--blue), var(--navy-light)); color: white; font-size: 15px; font-weight: 700; padding: 14px; border-radius: 10px; border: none; margin-top: 4px; box-shadow: 0 4px 16px rgba(29,95,205,0.3); }
+    .cw-messages { padding: 16px; min-height: 220px; display: flex; flex-direction: column; gap: 12px; background: var(--gray-50); }
+    .cw-msg { display: flex; gap: 8px; }
+    .cw-msg.user { flex-direction: row-reverse; }
+    .cw-msg-bubble { max-width: 240px; padding: 10px 14px; border-radius: 14px; font-size: 13px; line-height: 1.5; }
+    .cw-msg-bubble.bot { background: white; color: var(--gray-700); border: 1px solid var(--gray-200); border-bottom-left-radius: 4px; }
+    .cw-msg-bubble.user { background: var(--blue); color: white; border-bottom-right-radius: 4px; }
+    .cw-input-area { padding: 14px; border-top: 1px solid var(--gray-200); display: flex; gap: 8px; }
+    .cw-input-area input { flex: 1; border: 1px solid var(--gray-200); border-radius: 8px; padding: 10px 14px; font-size: 14px; outline: none; }
+    .cw-input-area input:focus { border-color: var(--blue); }
+    .cw-send-btn { background: var(--blue); border: none; color: white; border-radius: 8px; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+
+    /* ══════════════════════════════════
+       VIEW 2: AGENT CCP
+    ══════════════════════════════════ */
+    .ccp-layout { display: flex; height: calc(100vh - 52px); background: var(--gray-900); }
+    .ccp-sidebar { width: 280px; background: var(--navy); border-right: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; flex-shrink: 0; }
+    .ccp-agent-profile { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .agent-avatar { width: 52px; height: 52px; background: linear-gradient(135deg, var(--cyan), var(--blue)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: white; margin-bottom: 12px; }
+    .agent-name { color: white; font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+    .agent-role { color: var(--cyan); font-size: 12px; font-weight: 500; margin-bottom: 14px; }
+    .status-selector { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 8px 12px; color: white; font-size: 13px; font-weight: 500; width: 100%; display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-dot.available { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .status-dot.busy { background: var(--red); box-shadow: 0 0 6px var(--red); }
+    .status-dot.break { background: var(--gold); box-shadow: 0 0 6px var(--gold); }
+    .status-dot.offline { background: var(--gray-500); }
+    .ccp-stats { padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08); display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ccp-stat { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 12px; }
+    .ccp-stat .val { color: white; font-size: 22px; font-weight: 800; }
+    .ccp-stat .lbl { color: rgba(255,255,255,0.45); font-size: 11px; margin-top: 2px; }
+    .ccp-queue-list { padding: 16px 20px; flex: 1; overflow-y: auto; }
+    .ccp-queue-list h4 { color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+    .queue-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 4px; cursor: pointer; transition: background 0.15s; }
+    .queue-item:hover { background: rgba(255,255,255,0.06); }
+    .queue-item.active { background: rgba(6,182,212,0.12); border: 1px solid rgba(6,182,212,0.2); }
+    .queue-item-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+    .queue-item-name { color: rgba(255,255,255,0.8); font-size: 13px; flex: 1; }
+    .queue-item-count { color: var(--cyan); font-size: 12px; font-weight: 700; background: rgba(6,182,212,0.15); padding: 2px 7px; border-radius: 10px; }
+    .ccp-main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .ccp-toolbar { background: var(--gray-800); border-bottom: 1px solid rgba(255,255,255,0.08); padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+    .ccp-toolbar h2 { color: white; font-size: 15px; font-weight: 700; flex: 1; }
+    .toolbar-btn { background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 500; padding: 7px 14px; border-radius: 8px; display: flex; align-items: center; gap: 6px; transition: all 0.2s; }
+    .toolbar-btn:hover { background: rgba(255,255,255,0.12); color: white; }
+    .ccp-content { flex: 1; padding: 24px; overflow-y: auto; display: grid; grid-template-columns: 1fr 340px; gap: 20px; }
+    .incoming-contact { background: var(--gray-800); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; }
+    .ic-header { background: linear-gradient(135deg, rgba(29,95,205,0.4), rgba(6,182,212,0.2)); padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .ic-channel { display: inline-flex; align-items: center; gap: 6px; background: rgba(6,182,212,0.2); border: 1px solid rgba(6,182,212,0.3); color: var(--cyan); font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+    .ic-customer-info { display: flex; align-items: center; gap: 16px; }
+    .ic-avatar { width: 52px; height: 52px; background: linear-gradient(135deg, var(--gold), var(--orange)); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: white; flex-shrink: 0; }
+    .ic-details { flex: 1; }
+    .ic-name { color: white; font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+    .ic-meta { color: rgba(255,255,255,0.55); font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap; }
+    .ic-meta span { display: flex; align-items: center; gap: 5px; }
+    .ic-timer { color: var(--gold); font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .contact-attrs { padding: 20px 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .attr-item { }
+    .attr-label { color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+    .attr-value { color: white; font-size: 14px; font-weight: 600; }
+    .attr-value.policy { color: var(--cyan); }
+    .attr-value.badge { display: inline-flex; align-items: center; background: rgba(16,185,129,0.15); color: var(--green); padding: 3px 10px; border-radius: 20px; font-size: 12px; border: 1px solid rgba(16,185,129,0.25); }
+    .chat-area { padding: 20px 24px; flex: 1; }
+    .chat-area h3 { color: rgba(255,255,255,0.5); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 16px; }
+    .chat-transcript { display: flex; flex-direction: column; gap: 12px; max-height: 200px; overflow-y: auto; margin-bottom: 16px; }
+    .t-msg { display: flex; gap: 10px; }
+    .t-msg.agent { flex-direction: row-reverse; }
+    .t-bubble { max-width: 300px; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }
+    .t-bubble.customer { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.85); border-bottom-left-radius: 3px; }
+    .t-bubble.agent { background: linear-gradient(135deg, var(--blue), var(--navy-light)); color: white; border-bottom-right-radius: 3px; }
+    .t-time { color: rgba(255,255,255,0.3); font-size: 11px; margin-top: 4px; }
+    .agent-input { display: flex; gap: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 10px 16px; }
+    .agent-input input { flex: 1; background: none; border: none; color: white; font-size: 14px; outline: none; }
+    .agent-input input::placeholder { color: rgba(255,255,255,0.3); }
+    .agent-input-send { background: var(--blue); border: none; color: white; border-radius: 6px; padding: 6px 14px; font-size: 13px; font-weight: 600; }
+    .control-panel { background: var(--gray-800); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; display: flex; flex-direction: column; }
+    .cp-header { padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .cp-header h3 { color: white; font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+    .call-timer { display: flex; align-items: baseline; gap: 6px; }
+    .call-timer .time { color: var(--cyan); font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .call-timer .status { color: rgba(255,255,255,0.4); font-size: 13px; }
+    .cp-controls { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .ctrl-btn { padding: 14px 10px; border-radius: 10px; border: none; font-size: 13px; font-weight: 600; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all 0.2s; }
+    .ctrl-btn .icon { font-size: 20px; }
+    .ctrl-btn.accept { background: var(--green); color: white; box-shadow: 0 4px 16px rgba(16,185,129,0.35); }
+    .ctrl-btn.end { background: var(--red); color: white; box-shadow: 0 4px 16px rgba(239,68,68,0.35); }
+    .ctrl-btn.hold { background: rgba(245,158,11,0.15); color: var(--gold); border: 1px solid rgba(245,158,11,0.25); }
+    .ctrl-btn.transfer { background: rgba(59,130,246,0.15); color: var(--blue-light); border: 1px solid rgba(59,130,246,0.25); }
+    .ctrl-btn.mute { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.1); }
+    .ctrl-btn.notes { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.1); }
+    .ctrl-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+    .cp-transfer { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .cp-transfer h4 { color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .cp-transfer select { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; padding: 9px 12px; color: white; font-size: 13px; outline: none; }
+    .cp-transfer select option { background: var(--gray-800); }
+    .cp-sentiment { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .cp-sentiment h4 { color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .sentiment-bar { display: flex; align-items: center; gap: 10px; }
+    .sbar { flex: 1; height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+    .sbar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--cyan)); }
+    .sentiment-val { color: var(--green); font-size: 13px; font-weight: 700; }
+    .cp-history { padding: 16px 20px; border-top: 1px solid rgba(255,255,255,0.08); flex: 1; }
+    .cp-history h4 { color: rgba(255,255,255,0.4); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+    .hist-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .hist-type { font-size: 14px; }
+    .hist-info { flex: 1; }
+    .hist-info .subj { color: rgba(255,255,255,0.7); font-size: 12px; font-weight: 500; }
+    .hist-info .date { color: rgba(255,255,255,0.35); font-size: 11px; }
+    .hist-status { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+    .hist-status.resolved { background: rgba(16,185,129,0.15); color: var(--green); }
+    .hist-status.pending { background: rgba(245,158,11,0.15); color: var(--gold); }
+
+    /* ══════════════════════════════════
+       VIEW 3: SUPERVISOR DASHBOARD
+    ══════════════════════════════════ */
+    .dashboard-layout { display: flex; height: calc(100vh - 52px); background: var(--gray-50); }
+    .dash-sidebar { width: 240px; background: white; border-right: 1px solid var(--gray-200); display: flex; flex-direction: column; flex-shrink: 0; }
+    .dash-sidebar-header { padding: 20px; border-bottom: 1px solid var(--gray-100); }
+    .dash-sidebar-header h2 { font-size: 14px; font-weight: 800; color: var(--navy); margin-bottom: 3px; }
+    .dash-sidebar-header p { font-size: 12px; color: var(--gray-400); }
+    .dash-nav { padding: 12px 8px; flex: 1; }
+    .dash-nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; margin-bottom: 2px; cursor: pointer; transition: all 0.15s; color: var(--gray-600); font-size: 13px; font-weight: 500; }
+    .dash-nav-item:hover { background: var(--gray-50); color: var(--gray-900); }
+    .dash-nav-item.active { background: rgba(29,95,205,0.08); color: var(--blue); font-weight: 600; }
+    .dash-nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+    .dash-nav-item .nav-badge { margin-left: auto; background: var(--red); color: white; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; }
+    .dash-main { flex: 1; overflow-y: auto; padding: 24px; }
+    .dash-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .dash-topbar h1 { font-size: 22px; font-weight: 800; color: var(--gray-900); }
+    .dash-topbar-right { display: flex; align-items: center; gap: 12px; }
+    .refresh-info { color: var(--gray-400); font-size: 12px; display: flex; align-items: center; gap: 6px; }
+    .refresh-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .date-badge { background: var(--gray-100); color: var(--gray-600); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 8px; }
+    .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .metric-card { background: white; border: 1px solid var(--gray-200); border-radius: 14px; padding: 20px; position: relative; overflow: hidden; }
+    .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 14px 14px 0 0; }
+    .metric-card.blue::before { background: linear-gradient(90deg, var(--blue), var(--blue-light)); }
+    .metric-card.green::before { background: linear-gradient(90deg, var(--green), #34d399); }
+    .metric-card.red::before { background: linear-gradient(90deg, var(--red), #f87171); }
+    .metric-card.gold::before { background: linear-gradient(90deg, var(--gold), #fcd34d); }
+    .metric-card.cyan::before { background: linear-gradient(90deg, var(--cyan), #22d3ee); }
+    .mc-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 14px; }
+    .mc-icon.blue { background: rgba(59,130,246,0.1); }
+    .mc-icon.green { background: rgba(16,185,129,0.1); }
+    .mc-icon.red { background: rgba(239,68,68,0.08); }
+    .mc-icon.gold { background: rgba(245,158,11,0.1); }
+    .mc-icon.cyan { background: rgba(6,182,212,0.1); }
+    .mc-value { font-size: 34px; font-weight: 800; color: var(--gray-900); line-height: 1; margin-bottom: 6px; }
+    .mc-label { font-size: 13px; color: var(--gray-500); font-weight: 500; margin-bottom: 10px; }
+    .mc-trend { display: flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; }
+    .mc-trend.up { color: var(--green); }
+    .mc-trend.down { color: var(--red); }
+    .mc-trend.warn { color: var(--gold); }
+    .mc-queue-bars { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+    .qbar { display: flex; align-items: center; gap: 8px; }
+    .qbar-label { font-size: 11px; color: var(--gray-500); width: 80px; flex-shrink: 0; }
+    .qbar-track { flex: 1; height: 6px; background: var(--gray-100); border-radius: 3px; overflow: hidden; }
+    .qbar-fill { height: 100%; border-radius: 3px; }
+    .qbar-val { font-size: 11px; color: var(--gray-600); font-weight: 600; width: 20px; text-align: right; }
+    .dash-bottom { display: grid; grid-template-columns: 1fr 360px; gap: 20px; }
+    .agents-table-card { background: white; border: 1px solid var(--gray-200); border-radius: 14px; overflow: hidden; }
+    .card-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--gray-100); }
+    .card-header h3 { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+    .card-header-actions { display: flex; align-items: center; gap: 8px; }
+    .card-action-btn { background: var(--gray-100); color: var(--gray-600); font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: none; }
+    .agents-table { width: 100%; }
+    .agents-table th { text-align: left; padding: 10px 22px; font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.8px; background: var(--gray-50); border-bottom: 1px solid var(--gray-100); }
+    .agents-table td { padding: 14px 22px; font-size: 13px; color: var(--gray-700); border-bottom: 1px solid var(--gray-50); }
+    .agent-cell { display: flex; align-items: center; gap: 10px; }
+    .agent-cell-avatar { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .agent-cell-name { font-weight: 600; color: var(--gray-900); }
+    .agent-cell-id { font-size: 11px; color: var(--gray-400); }
+    .status-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+    .status-pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+    .status-pill.available { background: rgba(16,185,129,0.1); color: var(--green); }
+    .status-pill.available .dot { background: var(--green); }
+    .status-pill.busy { background: rgba(239,68,68,0.08); color: var(--red); }
+    .status-pill.busy .dot { background: var(--red); }
+    .status-pill.break { background: rgba(245,158,11,0.1); color: var(--gold); }
+    .status-pill.break .dot { background: var(--gold); }
+    .status-pill.offline { background: var(--gray-100); color: var(--gray-400); }
+    .status-pill.offline .dot { background: var(--gray-400); }
+    .duration-badge { font-size: 12px; font-weight: 600; color: var(--gray-500); font-variant-numeric: tabular-nums; }
+    .queue-badge { display: inline-flex; background: rgba(29,95,205,0.08); color: var(--blue); font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; }
+    .view-btn { background: none; border: none; color: var(--blue); font-size: 12px; font-weight: 600; padding: 4px 8px; border-radius: 5px; }
+    .view-btn:hover { background: rgba(29,95,205,0.08); }
+    .right-panel { display: flex; flex-direction: column; gap: 16px; }
+    .contact-lens-card { background: linear-gradient(135deg, var(--navy), var(--navy-light)); border-radius: 14px; padding: 22px; }
+    .cl-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .cl-icon { width: 36px; height: 36px; background: rgba(6,182,212,0.2); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .cl-title { color: white; font-size: 14px; font-weight: 700; }
+    .cl-sub { color: rgba(255,255,255,0.5); font-size: 12px; }
+    .sentiment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .sentiment-item { background: rgba(255,255,255,0.06); border-radius: 8px; padding: 12px; }
+    .si-label { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .si-val { color: white; font-size: 20px; font-weight: 800; }
+    .si-sub { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .sentiment-meter { margin-bottom: 16px; }
+    .sm-label { color: rgba(255,255,255,0.5); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .sm-bar { height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden; position: relative; }
+    .sm-bar-fill { height: 100%; border-radius: 4px; }
+    .sm-bar-fill.pos { background: linear-gradient(90deg, var(--green), #34d399); width: 68%; }
+    .sm-bar-fill.neg { background: linear-gradient(90deg, var(--red), #f87171); width: 12%; }
+    .sm-bar-fill.neu { background: linear-gradient(90deg, var(--gray-400), var(--gray-300)); width: 20%; }
+    .cl-transcript-btn { width: 100%; background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); color: var(--cyan); font-size: 13px; font-weight: 600; padding: 11px; border-radius: 8px; }
+    .cl-transcript-btn:hover { background: rgba(6,182,212,0.25); }
+    .alert-card { background: white; border: 1px solid var(--gray-200); border-radius: 14px; padding: 20px; }
+    .alert-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .alert-header h3 { font-size: 14px; font-weight: 700; color: var(--gray-900); }
+    .alert-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--gray-50); }
+    .alert-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+    .alert-icon.warn { background: rgba(245,158,11,0.1); }
+    .alert-icon.err { background: rgba(239,68,68,0.08); }
+    .alert-icon.info { background: rgba(59,130,246,0.1); }
+    .alert-content .title { font-size: 13px; font-weight: 600; color: var(--gray-800); margin-bottom: 2px; }
+    .alert-content .desc { font-size: 12px; color: var(--gray-400); }
+    .alert-time { font-size: 11px; color: var(--gray-300); margin-left: auto; white-space: nowrap; }
+
+    /* ══════════════════════════════════
+       VIEW 4: MANAGER CONFIG
+    ══════════════════════════════════ */
+    .manager-layout { display: flex; height: calc(100vh - 52px); background: var(--gray-50); }
+    .mgr-sidebar { width: 240px; background: white; border-right: 1px solid var(--gray-200); flex-shrink: 0; }
+    .mgr-sidebar-header { padding: 20px; border-bottom: 1px solid var(--gray-100); }
+    .mgr-sidebar-header h2 { font-size: 14px; font-weight: 800; color: var(--navy); }
+    .mgr-sidebar-header p { font-size: 12px; color: var(--gray-400); }
+    .mgr-nav { padding: 12px 8px; }
+    .mgr-nav-group { margin-bottom: 20px; }
+    .mgr-nav-group-label { font-size: 10px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 1.2px; padding: 0 12px; margin-bottom: 6px; }
+    .mgr-nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px; cursor: pointer; transition: all 0.15s; color: var(--gray-600); font-size: 13px; font-weight: 500; margin-bottom: 1px; }
+    .mgr-nav-item:hover { background: var(--gray-50); color: var(--gray-900); }
+    .mgr-nav-item.active { background: rgba(29,95,205,0.08); color: var(--blue); font-weight: 600; }
+    .mgr-nav-item .ni { font-size: 15px; width: 20px; text-align: center; }
+    .mgr-main { flex: 1; overflow-y: auto; padding: 28px; }
+    .mgr-page-header { margin-bottom: 28px; }
+    .mgr-page-header h1 { font-size: 24px; font-weight: 800; color: var(--gray-900); margin-bottom: 4px; }
+    .mgr-page-header p { font-size: 14px; color: var(--gray-500); }
+    .config-section { background: white; border: 1px solid var(--gray-200); border-radius: 16px; overflow: hidden; margin-bottom: 20px; }
+    .config-section-header { padding: 18px 24px; border-bottom: 1px solid var(--gray-100); display: flex; align-items: center; gap: 12px; }
+    .csh-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .csh-icon.blue { background: rgba(29,95,205,0.1); }
+    .csh-icon.green { background: rgba(16,185,129,0.1); }
+    .csh-icon.gold { background: rgba(245,158,11,0.1); }
+    .csh-icon.red { background: rgba(239,68,68,0.08); }
+    .csh-info h3 { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+    .csh-info p { font-size: 13px; color: var(--gray-500); }
+    .config-body { padding: 24px; }
+    .queue-config-item { display: flex; align-items: center; padding: 16px 0; border-bottom: 1px solid var(--gray-50); }
+    .queue-config-item:last-child { border-bottom: none; }
+    .qci-info { flex: 1; }
+    .qci-name { font-size: 14px; font-weight: 700; color: var(--gray-900); margin-bottom: 3px; }
+    .qci-meta { font-size: 12px; color: var(--gray-400); display: flex; gap: 16px; }
+    .qci-meta span { display: flex; align-items: center; gap: 4px; }
+    .qci-controls { display: flex; align-items: center; gap: 14px; }
+    .qci-status { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; }
+    .qci-status.open { color: var(--green); }
+    .qci-status.closed { color: var(--red); }
+    .toggle-switch { position: relative; width: 44px; height: 24px; }
+    .toggle-switch input { display: none; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--gray-200); border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+    .toggle-slider::after { content: ''; position: absolute; width: 18px; height: 18px; background: white; border-radius: 50%; top: 3px; left: 3px; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .toggle-switch input:checked + .toggle-slider { background: var(--green); }
+    .toggle-switch input:checked + .toggle-slider::after { transform: translateX(20px); }
+    .routing-table { width: 100%; }
+    .routing-table th { text-align: left; font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.8px; padding: 8px 0 12px; border-bottom: 1px solid var(--gray-100); }
+    .routing-table td { padding: 14px 0; border-bottom: 1px solid var(--gray-50); font-size: 13px; color: var(--gray-700); }
+    .routing-table td:first-child { font-weight: 600; color: var(--gray-900); }
+    .rt-select { border: 1px solid var(--gray-200); border-radius: 7px; padding: 7px 10px; font-size: 12px; color: var(--gray-700); background: white; outline: none; }
+    .rt-select:focus { border-color: var(--blue); }
+    .skill-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; background: rgba(29,95,205,0.08); color: var(--blue); padding: 3px 9px; border-radius: 6px; }
+    .lex-config { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .lc-bot-card { background: var(--gray-50); border: 1px solid var(--gray-200); border-radius: 12px; padding: 18px; }
+    .lc-bot-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .lc-bot-icon { width: 36px; height: 36px; background: linear-gradient(135deg, var(--cyan), var(--blue)); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    .lc-bot-name { font-size: 14px; font-weight: 700; color: var(--gray-900); }
+    .lc-bot-ver { font-size: 11px; color: var(--gray-400); }
+    .intent-list { display: flex; flex-direction: column; gap: 6px; }
+    .intent-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; background: white; border-radius: 7px; border: 1px solid var(--gray-200); }
+    .intent-name { font-size: 12px; font-weight: 600; color: var(--gray-800); display: flex; align-items: center; gap: 6px; }
+    .intent-lang { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; }
+    .intent-lang.en { background: rgba(29,95,205,0.1); color: var(--blue); }
+    .intent-lang.es { background: rgba(239,68,68,0.08); color: var(--red); }
+    .intent-hits { font-size: 11px; color: var(--gray-400); }
+    .config-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .config-stat { background: white; border: 1px solid var(--gray-200); border-radius: 12px; padding: 18px; display: flex; align-items: center; gap: 14px; }
+    .cs-icon { width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+    .cs-val { font-size: 24px; font-weight: 800; color: var(--gray-900); }
+    .cs-lbl { font-size: 12px; color: var(--gray-500); }
+    .save-bar { background: var(--navy); border-top: 1px solid rgba(255,255,255,0.1); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; }
+    .save-bar p { color: rgba(255,255,255,0.6); font-size: 13px; }
+    .btn-save { background: var(--green); color: white; font-size: 14px; font-weight: 700; padding: 10px 24px; border-radius: 9px; border: none; box-shadow: 0 4px 14px rgba(16,185,129,0.35); }
+    .btn-save:hover { background: #0da974; }
+    .btn-discard { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 9px; border: 1px solid rgba(255,255,255,0.15); margin-right: 8px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ── helpers ──────────────────────────────────────────────────────
+function useTimer(initial = 0) {
+  const [t, setT] = useState(initial);
+  useEffect(() => { const id = setInterval(() => setT(x => x + 1), 1000); return () => clearInterval(id); }, []);
+  const fmt = s => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+  return fmt(t);
+}
+function useLiveMetrics() {
+  const [m, setM] = useState({ ciq: 4, avail: 3, oldest: 142, sl: 84 });
+  useEffect(() => {
+    const id = setInterval(() => setM(p => ({
+      ciq: Math.max(0, p.ciq + (Math.random()>0.5?1:-1)),
+      avail: Math.max(0, Math.min(8, p.avail + (Math.random()>0.5?1:-1))),
+      oldest: Math.max(0, p.oldest + Math.floor(Math.random()*20-8)),
+      sl: Math.max(60, Math.min(100, p.sl + Math.floor(Math.random()*4-1))),
+    })), 4000);
+    return () => clearInterval(id);
+  }, []);
+  return m;
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW 1: Customer Portal
+// ══════════════════════════════════════════════════════
+function CustomerPortal() {
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatStarted, setChatStarted] = useState(false);
+  const [form, setForm] = useState({ name:'', policy:'', topic:'claims' });
+  const [msgInput, setMsgInput] = useState('');
+  const [messages, setMessages] = useState([
+    { from:'bot', text:'Hello! I\'m Kira, your Kiro Insurance AI assistant. How can I help you today?' }
+  ]);
+  const [activePage, setActivePage] = useState('home');
+
+  function sendMsg(e) {
+    e && e.preventDefault();
+    if (!msgInput.trim()) return;
+    const userMsg = { from:'user', text: msgInput };
+    setMessages(m => [...m, userMsg]);
+    setMsgInput('');
+    setTimeout(() => {
+      let reply = 'Thank you! Let me look that up for you. Your claim is currently under review. Expected completion: 3-5 business days. Would you like to speak with a claims specialist?';
+      if (msgInput.toLowerCase().includes('policy')) reply = 'Your policy covers medical, accident, and theft up to $500,000. For detailed coverage, I can connect you with a policy advisor.';
+      if (msgInput.toLowerCase().includes('agent') || msgInput.toLowerCase().includes('human')) reply = 'Of course! I\'m transferring you to a live agent now. Please hold for a moment...';
+      setMessages(m => [...m, { from:'bot', text: reply }]);
+    }, 800);
+  }
+
+  return (
+    <div>
+      {/* Header */}
+      <header className="portal-header">
+        <div className="portal-topbar">
+          <div className="portal-logo">
+            <div className="portal-logo-icon">🛡️</div>
+            <div className="portal-logo-text">
+              <div className="name">Kiro Insurance</div>
+              <div className="sub">Protect · Secure · Thrive</div>
+            </div>
+          </div>
+          <nav className="portal-nav">
+            {['Home','Claims','Policy','About','Contact'].map(n => (
+              <a key={n} href="#" className={activePage === n.toLowerCase() ? 'active' : ''} onClick={e => { e.preventDefault(); setActivePage(n.toLowerCase()); }}>{n}</a>
+            ))}
+            <a href="#" className="portal-nav-cta" onClick={e => e.preventDefault()}>My Account</a>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="portal-hero">
+        <div className="portal-hero-inner">
+          <div>
+            <div className="hero-label">🤖 AI-Powered Support 24/7</div>
+            <h1 className="hero-title">Insurance Made <span>Simple & Smart</span></h1>
+            <p className="hero-desc">Get instant answers, file claims in minutes, and access policy details anytime — powered by AI that understands your needs.</p>
+            <div className="hero-actions">
+              <button className="btn-primary" onClick={() => setChatOpen(true)}>💬 Start a Chat</button>
+              <button className="btn-outline">📋 File a Claim</button>
+            </div>
+            <div className="hero-stats">
+              {[['98%','Satisfaction Rate'],['< 30s','Avg. Response'],['24/7','AI Support'],['500K+','Customers']].map(([n,l]) => (
+                <div key={l} className="hero-stat"><div className="num">{n}</div><div className="lbl">{l}</div></div>
+              ))}
+            </div>
+          </div>
+          {/* Chat preview card */}
+          <div className="hero-card">
+            <div className="hc-header">
+              <div className="hc-status"></div>
+              <span className="hc-title">Kira AI Assistant</span>
+              <span className="hc-subtitle">Online now</span>
+            </div>
+            <div className="hc-chat-messages">
+              <div className="chat-msg">
+                <div className="chat-avatar bot">K</div>
+                <div className="chat-bubble bot">Hi! I'm Kira 👋 How can I help with your insurance today?</div>
+              </div>
+              <div className="chat-msg user">
+                <div className="chat-avatar user">JD</div>
+                <div className="chat-bubble user">Check my claim #CLM-2024-8841</div>
+              </div>
+              <div className="chat-msg">
+                <div className="chat-avatar bot">K</div>
+                <div className="chat-bubble bot">Claim #CLM-2024-8841 is under review. Est. 3-5 days. Need an agent? 🎯</div>
+              </div>
+            </div>
+            <div className="hc-input">
+              <input placeholder="Type your message..." />
+              <button className="hc-send">➤</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="portal-features">
+        <div className="section-label">Why Choose Kiro</div>
+        <h2 className="section-title">Everything You Need, All in One Place</h2>
+        <p className="section-desc">From instant AI support to live agents — we've built the most seamless insurance experience.</p>
+        <div className="features-grid">
+          {[
+            { icon:'🤖', cls:'blue', title:'AI-Powered Claims', desc:'Our Lex AI bot handles claim status inquiries instantly — no wait times, no hold music.', link:'Learn more' },
+            { icon:'📞', cls:'cyan', title:'Voice & Chat Support', desc:'Connect via voice call or live chat. Our agents are available with proficiency-based routing.', link:'View channels' },
+            { icon:'🔒', cls:'green', title:'Secure & Compliant', desc:'Role-based access, Amazon Cognito authentication, and Contact Lens analytics for full compliance.', link:'Security info' },
+            { icon:'📊', cls:'gold', title:'Real-Time Analytics', desc:'Contact Lens provides sentiment analysis and transcript insights for every interaction.', link:'View reports' },
+            { icon:'🌐', cls:'red', title:'Multilingual Support', desc:'Serving you in English and Spanish. More languages coming soon via Amazon Lex locales.', link:'Language settings' },
+            { icon:'⚡', cls:'purple', title:'Instant Callback', desc:'No time to wait? Request a callback and our system will ring you back the moment an agent is free.', link:'Request callback' },
+          ].map(f => (
+            <div key={f.title} className="feature-card">
+              <div className={`feature-icon ${f.cls}`}>{f.icon}</div>
+              <div className="feature-title">{f.title}</div>
+              <div className="feature-desc">{f.desc}</div>
+              <div className="feature-link">{f.link} →</div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Plans */}
+      <section className="portal-plans">
+        <div className="plans-inner">
+          <div className="section-label">Coverage Plans</div>
+          <h2 className="section-title">Choose Your Protection Level</h2>
+          <p className="section-desc">Transparent pricing, comprehensive coverage. Switch plans anytime.</p>
+          <div className="plans-grid">
+            {[
+              { name:'Basic Shield', price:'$49', per:'/mo', icon:'🛡️', desc:'Essential coverage for individuals', featured: false,
+                features:['Medical up to $100K', 'Accident coverage', 'Chat support', '24/7 AI assistant', 'Mobile access'] },
+              { name:'Premium Guard', price:'$129', per:'/mo', icon:'⭐', desc:'Complete protection for families', featured: true,
+                features:['Medical up to $500K', 'Accident + theft', 'Priority voice support', 'Dedicated agent', 'Contact Lens analytics', 'Multilingual support'] },
+              { name:'Elite Fortress', price:'$249', per:'/mo', icon:'👑', desc:'Ultimate coverage for businesses', featured: false,
+                features:['Unlimited medical', 'All risk coverage', 'VIP call line', 'Account manager', 'Real-time dashboard', 'Custom routing', 'Outbound campaign'] },
+            ].map(p => (
+              <div key={p.name} className={`plan-card ${p.featured ? 'featured' : ''}`}>
+                {p.featured && <div className="plan-badge">Most Popular</div>}
+                <div className="plan-icon">{p.icon}</div>
+                <div className="plan-name">{p.name}</div>
+                <div className="plan-price">{p.price}<span>{p.per}</span></div>
+                <div className="plan-desc">{p.desc}</div>
+                <ul className="plan-features">{p.features.map(f => <li key={f}>{f}</li>)}</ul>
+                <button className={`btn-plan ${p.featured ? 'primary' : 'secondary'}`}>Get Started</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="portal-footer">
+        <div className="footer-inner">
+          <div className="footer-grid">
+            <div className="footer-brand">
+              <div className="name">🛡️ Kiro Insurance</div>
+              <p>AI-powered contact center built on Amazon Connect. Protecting customers with intelligent, always-on support.</p>
+            </div>
+            {[
+              { title:'Products', links:['Auto Insurance','Home Insurance','Life Insurance','Health Insurance'] },
+              { title:'Support', links:['File a Claim','Policy Info','Contact Us','FAQ'] },
+              { title:'Company', links:['About Us','Careers','Press','Partners'] },
+            ].map(col => (
+              <div key={col.title} className="footer-col">
+                <h4>{col.title}</h4>
+                {col.links.map(l => <a key={l} href="#">{l}</a>)}
+              </div>
+            ))}
+          </div>
+          <div className="footer-bottom">
+            <p>© 2025 Kiro Insurance · Kiro Krafters Team · All rights reserved</p>
+            <p>Built with Amazon Connect · AWS Lambda · Amazon Lex · Contact Lens</p>
+          </div>
+        </div>
+      </footer>
+
+      {/* Floating Chat Button */}
+      <button className="chat-float-btn" onClick={() => setChatOpen(o => !o)} title="Chat with us">
+        {chatOpen ? '✕' : '💬'}
+      </button>
+
+      {/* Chat Widget */}
+      {chatOpen && (
+        <div className="chat-widget">
+          <div className="cw-header">
+            <div className="cw-avatar">🤖</div>
+            <div className="cw-info">
+              <div className="name">Kira — AI Assistant</div>
+              <div className="status">Online · Powered by Amazon Lex</div>
+            </div>
+            <button className="cw-close" onClick={() => setChatOpen(false)}>✕</button>
+          </div>
+          {!chatStarted ? (
+            <div className="cw-pre-form">
+              <h3>Start a Conversation</h3>
+              <p>Please provide a few details so we can assist you better.</p>
+              <div className="form-field"><label>Full Name</label><input placeholder="e.g. Jane Smith" value={form.name} onChange={e => setForm(f => ({...f, name: e.target.value}))} /></div>
+              <div className="form-field"><label>Policy Number</label><input placeholder="e.g. KI-2024-XXXXXX" value={form.policy} onChange={e => setForm(f => ({...f, policy: e.target.value}))} /></div>
+              <div className="form-field"><label>Topic</label>
+                <select value={form.topic} onChange={e => setForm(f => ({...f, topic: e.target.value}))}>
+                  <option value="claims">Claims & Status</option>
+                  <option value="policy">Policy Information</option>
+                  <option value="billing">Billing & Payments</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <button className="btn-start-chat" onClick={() => setChatStarted(true)}>Start Chat →</button>
+            </div>
+          ) : (
+            <>
+              <div className="cw-messages">
+                {messages.map((m, i) => (
+                  <div key={i} className={`cw-msg ${m.from === 'user' ? 'user' : ''}`}>
+                    {m.from === 'bot' && <div className="chat-avatar bot" style={{width:28,height:28,fontSize:12}}>K</div>}
+                    <div className={`cw-msg-bubble ${m.from === 'bot' ? 'bot' : 'user'}`}>{m.text}</div>
+                  </div>
+                ))}
+              </div>
+              <form className="cw-input-area" onSubmit={sendMsg}>
+                <input placeholder="Type a message..." value={msgInput} onChange={e => setMsgInput(e.target.value)} />
+                <button type="submit" className="cw-send-btn">➤</button>
+              </form>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW 2: Agent CCP
+// ══════════════════════════════════════════════════════
+function AgentCCP() {
+  const timer = useTimer(423);
+  const [status, setStatus] = useState('available');
+  const [msgInput, setMsgInput] = useState('');
+  const [messages, setMessages] = useState([
+    { from:'customer', text:"Hi, I need to check on claim #CLM-2024-8841. It's been 2 weeks.", time:'10:23' },
+    { from:'bot', text:'[Lex Bot] Claim #CLM-2024-8841 identified. Transferring to Claims queue...', time:'10:23' },
+    { from:'customer', text:'Thanks, I\'ve been waiting and need an update urgently.', time:'10:24' },
+  ]);
+  const [onHold, setOnHold] = useState(false);
+  const [muted, setMuted] = useState(false);
+
+  const statusOptions = [
+    { id:'available', label:'Available', cls:'available' },
+    { id:'busy', label:'On Contact', cls:'busy' },
+    { id:'break', label:'Break', cls:'break' },
+    { id:'offline', label:'Offline', cls:'offline' },
+  ];
+
+  function sendMsg(e) {
+    e.preventDefault();
+    if (!msgInput.trim()) return;
+    setMessages(m => [...m, { from:'agent', text: msgInput, time: new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'}) }]);
+    setMsgInput('');
+  }
+
+  return (
+    <div className="ccp-layout">
+      {/* Sidebar */}
+      <aside className="ccp-sidebar">
+        <div className="ccp-agent-profile">
+          <div className="agent-avatar">MP</div>
+          <div className="agent-name">Mehul Parmar</div>
+          <div className="agent-role">Claims Specialist · Agent</div>
+          <div style={{marginBottom:8}}>
+            {statusOptions.map(s => (
+              <button key={s.id} onClick={() => setStatus(s.id)} style={{
+                display: status === s.id ? 'flex' : 'none', alignItems:'center', gap:8,
+                background: status === s.id ? 'rgba(255,255,255,0.08)' : 'transparent',
+                border: '1px solid rgba(255,255,255,0.12)', borderRadius:8, padding:'8px 12px',
+                color:'white', fontSize:13, fontWeight:500, width:'100%', cursor:'pointer'
+              }}>
+                <div className={`status-dot ${s.cls}`}></div>{s.label} ▾
+              </button>
+            ))}
+          </div>
+          <div style={{display:'flex',flexDirection:'column',gap:4}}>
+            {statusOptions.map(s => (
+              <button key={s.id} onClick={() => setStatus(s.id)} style={{
+                display: 'flex', alignItems:'center', gap:8,
+                background: status === s.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                border: 'none', borderRadius:6, padding:'7px 10px',
+                color: status === s.id ? 'white' : 'rgba(255,255,255,0.5)', fontSize:13, cursor:'pointer'
+              }}>
+                <div className={`status-dot ${s.cls}`}></div>{s.label}
+                {status === s.id && <span style={{marginLeft:'auto',fontSize:11,color:'var(--cyan)'}}>●</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="ccp-stats">
+          {[['7','Contacts Today'],['2','In Queue'],['94%','CSAT'],['4:12','Avg Handle']].map(([v,l]) => (
+            <div key={l} className="ccp-stat"><div className="val">{v}</div><div className="lbl">{l}</div></div>
+          ))}
+        </div>
+        <div className="ccp-queue-list">
+          <h4>Active Queues</h4>
+          {[
+            { name:'General Support', count:1, active: false },
+            { name:'Claims', count:2, active: true },
+          ].map(q => (
+            <div key={q.name} className={`queue-item ${q.active ? 'active' : ''}`}>
+              <div className="queue-item-dot"></div>
+              <span className="queue-item-name">{q.name}</span>
+              <span className="queue-item-count">{q.count}</span>
+            </div>
+          ))}
+          <h4 style={{marginTop:20}}>Quick Connects</h4>
+          {['Claims Team','Supervisor','Billing'].map(qc => (
+            <div key={qc} className="queue-item" style={{cursor:'pointer'}}>
+              <span style={{fontSize:13}}>⚡</span>
+              <span className="queue-item-name">{qc}</span>
+              <span style={{fontSize:11,color:'rgba(255,255,255,0.3)'}}>→</span>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      {/* Main */}
+      <main className="ccp-main">
+        <div className="ccp-toolbar">
+          <h2>Active Contact — Chat Channel</h2>
+          <button className="toolbar-btn">📊 Dashboard</button>
+          <button className="toolbar-btn">📝 Contact History</button>
+          <button className="toolbar-btn">⚙️ Settings</button>
+        </div>
+        <div className="ccp-content">
+          {/* Contact + Chat */}
+          <div>
+            <div className="incoming-contact">
+              <div className="ic-header">
+                <div className="ic-channel">💬 Chat</div>
+                <div className="ic-customer-info">
+                  <div className="ic-avatar">JD</div>
+                  <div className="ic-details">
+                    <div className="ic-name">Jane Doe</div>
+                    <div className="ic-meta">
+                      <span>📋 KI-2024-887432</span>
+                      <span>📍 kk_queue_claims_dev</span>
+                      <span>🌐 English</span>
+                    </div>
+                  </div>
+                  <div className="ic-timer">{timer}</div>
+                </div>
+              </div>
+              <div className="contact-attrs">
+                {[
+                  ['Customer Name','Jane Doe'],['Policy Number','KI-2024-887432'],
+                  ['Contact Type','Chat'],['Intent Detected','ClaimStatus'],
+                  ['Queue','kk_queue_claims_dev'],['Sentiment',<span className="attr-value badge">😊 Positive</span>],
+                ].map(([l,v]) => (
+                  <div key={l} className="attr-item">
+                    <div className="attr-label">{l}</div>
+                    {typeof v === 'string' ? <div className={`attr-value ${l==='Policy Number'?'policy':''}`}>{v}</div> : v}
+                  </div>
+                ))}
+              </div>
+              <div className="chat-area">
+                <h3>Chat Transcript</h3>
+                <div className="chat-transcript">
+                  {messages.map((m,i) => (
+                    <div key={i} className={`t-msg ${m.from==='agent'?'agent':''}`}>
+                      {m.from!=='agent' && <div style={{width:28,height:28,borderRadius:'50%',background:m.from==='bot'?'linear-gradient(135deg,var(--cyan),var(--blue))':'rgba(255,255,255,0.15)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:11,color:'white',flexShrink:0}}>{m.from==='bot'?'🤖':'JD'}</div>}
+                      <div>
+                        <div className={`t-bubble ${m.from==='agent'?'agent':'customer'}`}>{m.text}</div>
+                        <div className="t-time">{m.time}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <form className="agent-input" onSubmit={sendMsg}>
+                  <input placeholder="Type your reply..." value={msgInput} onChange={e => setMsgInput(e.target.value)} />
+                  <button type="submit" className="agent-input-send">Send</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
+          {/* Control Panel */}
+          <div className="control-panel">
+            <div className="cp-header">
+              <h3>Contact Controls</h3>
+              <div className="call-timer">
+                <span className="time">{timer}</span>
+                <span className="status">{onHold ? '⏸ On Hold' : '● Active'}</span>
+              </div>
+            </div>
+            <div className="cp-controls">
+              {[
+                { label:'Accept', icon:'✅', cls:'accept', action: () => {} },
+                { label:'End Call', icon:'📴', cls:'end', action: () => {} },
+                { label: onHold ? 'Resume' : 'Hold', icon: onHold ? '▶️' : '⏸', cls:'hold', action: () => setOnHold(h => !h) },
+                { label:'Transfer', icon:'↗️', cls:'transfer', action: () => {} },
+                { label: muted ? 'Unmute' : 'Mute', icon: muted ? '🔈' : '🔇', cls:'mute', action: () => setMuted(m => !m) },
+                { label:'Add Note', icon:'📝', cls:'notes', action: () => {} },
+              ].map(b => (
+                <button key={b.label} className={`ctrl-btn ${b.cls}`} onClick={b.action}>
+                  <span className="icon">{b.icon}</span>{b.label}
+                </button>
+              ))}
+            </div>
+            <div className="cp-transfer">
+              <h4>Transfer To</h4>
+              <select>
+                <option>Select Quick Connect...</option>
+                <option>Claims Team</option>
+                <option>Supervisor</option>
+                <option>Billing Department</option>
+              </select>
+            </div>
+            <div className="cp-sentiment">
+              <h4>Contact Lens — Sentiment</h4>
+              <div className="sentiment-bar">
+                <div className="sbar"><div className="sbar-fill" style={{width:'72%'}}></div></div>
+                <span className="sentiment-val">72% Positive</span>
+              </div>
+            </div>
+            <div className="cp-history">
+              <h4>Contact History</h4>
+              {[
+                { type:'💬', subj:'Claim inquiry — #CLM-8841', date:'May 20', status:'resolved' },
+                { type:'📞', subj:'Policy renewal query', date:'Apr 15', status:'resolved' },
+                { type:'💬', subj:'Billing discrepancy', date:'Mar 3', status:'pending' },
+              ].map((h,i) => (
+                <div key={i} className="hist-item">
+                  <span className="hist-type">{h.type}</span>
+                  <div className="hist-info"><div className="subj">{h.subj}</div><div className="date">{h.date}</div></div>
+                  <span className={`hist-status ${h.status}`}>{h.status}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW 3: Supervisor Dashboard
+// ══════════════════════════════════════════════════════
+function SupervisorDashboard() {
+  const m = useLiveMetrics();
+  const [activeNav, setActiveNav] = useState('realtime');
+
+  const agents = [
+    { id:'A001', name:'Mehul Parmar', initials:'MP', color:'#3b82f6', status:'busy', queue:'Claims', duration:'4:23', contacts:7, csat:'98%' },
+    { id:'A002', name:'Himanshu Parmar', initials:'HP', color:'#8b5cf6', status:'available', queue:'—', duration:'—', contacts:5, csat:'95%' },
+    { id:'A003', name:'Ayush Anghan', initials:'AA', color:'#10b981', status:'busy', queue:'General', duration:'8:51', contacts:9, csat:'91%' },
+    { id:'A004', name:'Darshan Kalathiya', initials:'DK', color:'#f59e0b', status:'break', queue:'—', duration:'—', contacts:3, csat:'97%' },
+    { id:'A005', name:'Bhautik Navdariya', initials:'BN', color:'#ef4444', status:'available', queue:'—', duration:'—', contacts:6, csat:'93%' },
+  ];
+
+  return (
+    <div className="dashboard-layout">
+      {/* Sidebar */}
+      <aside className="dash-sidebar">
+        <div className="dash-sidebar-header">
+          <h2>Supervisor Console</h2>
+          <p>Saveen Poonia · Supervisor</p>
+        </div>
+        <nav className="dash-nav">
+          {[
+            { id:'realtime', icon:'📊', label:'Real-Time Metrics' },
+            { id:'agents', icon:'👥', label:'Agent Monitor', badge:2 },
+            { id:'queues', icon:'📋', label:'Queue Management' },
+            { id:'lens', icon:'🔍', label:'Contact Lens' },
+            { id:'history', icon:'📈', label:'Historical Reports' },
+            { id:'alerts', icon:'🔔', label:'Alerts', badge:3 },
+          ].map(n => (
+            <div key={n.id} className={`dash-nav-item ${activeNav===n.id?'active':''}`} onClick={() => setActiveNav(n.id)}>
+              <span className="nav-icon">{n.icon}</span>
+              {n.label}
+              {n.badge && <span className="nav-badge">{n.badge}</span>}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      {/* Main */}
+      <main className="dash-main">
+        <div className="dash-topbar">
+          <h1>Real-Time Contact Center</h1>
+          <div className="dash-topbar-right">
+            <div className="refresh-info"><div className="refresh-dot"></div>Auto-refresh 30s</div>
+            <div className="date-badge">📅 May 23, 2025 · 10:34 AM</div>
+          </div>
+        </div>
+
+        {/* Metric Cards */}
+        <div className="metrics-grid">
+          {[
+            { cls:'red', icon:'🔴', icls:'red', val:m.ciq, label:'Contacts in Queue', trend:'up', trendVal:'+2 from last 5min' },
+            { cls:'green', icon:'🟢', icls:'green', val:m.avail, label:'Agents Available', trend:'up', trendVal:'3 of 8 agents' },
+            { cls:'gold', icon:'⏱️', icls:'gold', val:`${Math.floor(m.oldest/60)}:${String(m.oldest%60).padStart(2,'0')}`, label:'Oldest Contact Age', trend:'warn', trendVal:'Approaching SLA' },
+            { cls:'blue', icon:'📈', icls:'blue', val:`${m.sl}%`, label:'Service Level (30s)', trend:'up', trendVal:'Target: 80%' },
+            { cls:'cyan', icon:'💬', icls:'cyan', val:'23', label:'Contacts Today', trend:'up', trendVal:'+5 vs yesterday' },
+          ].map(mc => (
+            <div key={mc.label} className={`metric-card ${mc.cls}`}>
+              <div className={`mc-icon ${mc.icls}`}>{mc.icon}</div>
+              <div className="mc-value">{mc.val}</div>
+              <div className="mc-label">{mc.label}</div>
+              <div className={`mc-trend ${mc.trend}`}>
+                {mc.trend==='up'?'↑':mc.trend==='down'?'↓':'⚠'} {mc.trendVal}
+              </div>
+              {mc.label === 'Contacts in Queue' && (
+                <div className="mc-queue-bars">
+                  <div className="qbar"><div className="qbar-label">Claims</div><div className="qbar-track"><div className="qbar-fill" style={{width:'60%',background:'var(--red)'}}></div></div><div className="qbar-val">3</div></div>
+                  <div className="qbar"><div className="qbar-label">General</div><div className="qbar-track"><div className="qbar-fill" style={{width:'20%',background:'var(--gold)'}}></div></div><div className="qbar-val">1</div></div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Bottom: Agent Table + Right Panel */}
+        <div className="dash-bottom">
+          <div className="agents-table-card">
+            <div className="card-header">
+              <h3>👥 Agent Status Monitor</h3>
+              <div className="card-header-actions">
+                <button className="card-action-btn">🔄 Refresh</button>
+                <button className="card-action-btn">📥 Export</button>
+              </div>
+            </div>
+            <table className="agents-table">
+              <thead>
+                <tr>
+                  <th>Agent</th>
+                  <th>Status</th>
+                  <th>Queue</th>
+                  <th>Duration</th>
+                  <th>Today</th>
+                  <th>CSAT</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {agents.map(a => (
+                  <tr key={a.id}>
+                    <td>
+                      <div className="agent-cell">
+                        <div className="agent-cell-avatar" style={{background:`${a.color}22`,color:a.color}}>{a.initials}</div>
+                        <div><div className="agent-cell-name">{a.name}</div><div className="agent-cell-id">{a.id}</div></div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`status-pill ${a.status}`}>
+                        <span className="dot"></span>
+                        {a.status.charAt(0).toUpperCase()+a.status.slice(1)}
+                      </span>
+                    </td>
+                    <td>{a.queue !== '—' ? <span className="queue-badge">{a.queue}</span> : <span style={{color:'var(--gray-300)'}}>—</span>}</td>
+                    <td><span className="duration-badge">{a.duration}</span></td>
+                    <td><span style={{fontWeight:600,color:'var(--gray-800)'}}>{a.contacts}</span></td>
+                    <td><span style={{fontWeight:700,color:'var(--green)'}}>{a.csat}</span></td>
+                    <td><button className="view-btn">Monitor</button></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="right-panel">
+            {/* Contact Lens Card */}
+            <div className="contact-lens-card">
+              <div className="cl-header">
+                <div className="cl-icon">🔍</div>
+                <div><div className="cl-title">Contact Lens Analytics</div><div className="cl-sub">Last 1 hour</div></div>
+              </div>
+              <div className="sentiment-grid">
+                {[
+                  {l:'Avg Sentiment', v:'78%', s:'Positive'},
+                  {l:'Interruptions', v:'3', s:'Low risk'},
+                  {l:'Non-talk Time', v:'12%', s:'Acceptable'},
+                  {l:'Issues Flagged', v:'1', s:'Review needed'},
+                ].map(si => (
+                  <div key={si.l} className="sentiment-item">
+                    <div className="si-label">{si.l}</div>
+                    <div className="si-val">{si.v}</div>
+                    <div className="si-sub">{si.s}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="sentiment-meter">
+                <div className="sm-label">Sentiment Distribution</div>
+                <div style={{display:'flex',gap:4,marginTop:6}}>
+                  {[['Positive','var(--green)','68%'],['Neutral','var(--gray-400)','20%'],['Negative','var(--red)','12%']].map(([l,c,w]) => (
+                    <div key={l} style={{flex:1,textAlign:'center'}}>
+                      <div style={{height:6,background:'rgba(255,255,255,0.1)',borderRadius:3,overflow:'hidden',marginBottom:4}}>
+                        <div style={{height:'100%',borderRadius:3,background:c,width:w}}></div>
+                      </div>
+                      <div style={{fontSize:10,color:'rgba(255,255,255,0.5)'}}>{l}</div>
+                      <div style={{fontSize:12,fontWeight:700,color:'white'}}>{w}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <button className="cl-transcript-btn">📄 View Full Transcripts →</button>
+            </div>
+
+            {/* Alerts */}
+            <div className="alert-card">
+              <div className="alert-header">
+                <h3>🔔 Active Alerts</h3>
+                <span style={{fontSize:11,color:'var(--gray-400)'}}>3 alerts</span>
+              </div>
+              {[
+                { icon:'⚠️', cls:'warn', title:'Queue threshold reached', desc:'Claims queue: 3 contacts waiting', time:'2m ago' },
+                { icon:'🔴', cls:'err', title:'SLA at risk', desc:'Oldest contact: 2m 22s', time:'1m ago' },
+                { icon:'ℹ️', cls:'info', title:'Agent DK on break', desc:'Expected return in 8 mins', time:'5m ago' },
+              ].map((a,i) => (
+                <div key={i} className="alert-item">
+                  <div className={`alert-icon ${a.cls}`}>{a.icon}</div>
+                  <div className="alert-content"><div className="title">{a.title}</div><div className="desc">{a.desc}</div></div>
+                  <div className="alert-time">{a.time}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// VIEW 4: Manager Config
+// ══════════════════════════════════════════════════════
+function ManagerConfig() {
+  const [queues, setQueues] = useState([
+    { id:'q1', name:'kk_queue_general_dev', label:'General Support', open:true, agents:3, inQueue:1, hours:'24/7' },
+    { id:'q2', name:'kk_queue_claims_dev', label:'Claims Processing', open:true, agents:2, inQueue:3, hours:'Mon–Fri 8AM–8PM' },
+  ]);
+  const [activeNav, setActiveNav] = useState('queues');
+  const [saved, setSaved] = useState(false);
+
+  const toggleQueue = (id) => setQueues(qs => qs.map(q => q.id===id ? {...q, open: !q.open} : q));
+
+  function handleSave() {
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  const agents = [
+    { id:'A001', name:'Mehul Parmar', profile:'kk_rp_agent_dev', skill:'InsuranceClaims', level:4 },
+    { id:'A002', name:'Himanshu Parmar', profile:'kk_rp_agent_dev', skill:'GeneralSupport', level:3 },
+    { id:'A003', name:'Ayush Anghan', profile:'kk_rp_supervisor_dev', skill:'InsuranceClaims', level:5 },
+  ];
+
+  return (
+    <div className="manager-layout" style={{flexDirection:'column'}}>
+      <div style={{display:'flex',flex:1,overflow:'hidden'}}>
+        {/* Sidebar */}
+        <aside className="mgr-sidebar">
+          <div className="mgr-sidebar-header">
+            <h2>Manager Console</h2>
+            <p>Saveen Poonia · Manager</p>
+          </div>
+          <nav className="mgr-nav">
+            <div className="mgr-nav-group">
+              <div className="mgr-nav-group-label">Contact Center</div>
+              {[
+                { id:'queues', icon:'📋', label:'Queue Management' },
+                { id:'routing', icon:'🔀', label:'Routing Profiles' },
+                { id:'hours', icon:'🕐', label:'Hours of Operation' },
+              ].map(n => (
+                <div key={n.id} className={`mgr-nav-item ${activeNav===n.id?'active':''}`} onClick={() => setActiveNav(n.id)}>
+                  <span className="ni">{n.icon}</span>{n.label}
+                </div>
+              ))}
+            </div>
+            <div className="mgr-nav-group">
+              <div className="mgr-nav-group-label">AI & Automation</div>
+              {[
+                { id:'lex', icon:'🤖', label:'Lex Bot Config' },
+                { id:'lens', icon:'🔍', label:'Contact Lens' },
+                { id:'flows', icon:'⚡', label:'Contact Flows' },
+              ].map(n => (
+                <div key={n.id} className={`mgr-nav-item ${activeNav===n.id?'active':''}`} onClick={() => setActiveNav(n.id)}>
+                  <span className="ni">{n.icon}</span>{n.label}
+                </div>
+              ))}
+            </div>
+            <div className="mgr-nav-group">
+              <div className="mgr-nav-group-label">Access & Security</div>
+              {[
+                { id:'users', icon:'👤', label:'Users & Roles' },
+                { id:'security', icon:'🔒', label:'Security Profiles' },
+              ].map(n => (
+                <div key={n.id} className={`mgr-nav-item ${activeNav===n.id?'active':''}`} onClick={() => setActiveNav(n.id)}>
+                  <span className="ni">{n.icon}</span>{n.label}
+                </div>
+              ))}
+            </div>
+          </nav>
+        </aside>
+
+        {/* Main */}
+        <main className="mgr-main">
+          <div className="mgr-page-header">
+            <h1>Queue Management</h1>
+            <p>Configure queues, toggle availability, and manage routing for kk_connect_dev</p>
+          </div>
+
+          {/* Summary Stats */}
+          <div className="config-stats">
+            {[
+              { icon:'📋', cls:'blue', val:2, label:'Active Queues' },
+              { icon:'👥', cls:'green', val:5, label:'Total Agents' },
+              { icon:'🔀', cls:'gold', val:2, label:'Routing Profiles' },
+            ].map(s => (
+              <div key={s.label} className="config-stat">
+                <div className={`cs-icon mc-icon ${s.cls}`}>{s.icon}</div>
+                <div><div className="cs-val">{s.val}</div><div className="cs-lbl">{s.label}</div></div>
+              </div>
+            ))}
+          </div>
+
+          {/* Queue Toggle Section */}
+          <div className="config-section">
+            <div className="config-section-header">
+              <div className="csh-icon blue">📋</div>
+              <div className="csh-info">
+                <h3>Queue Availability</h3>
+                <p>Toggle queues open or closed in real-time</p>
+              </div>
+            </div>
+            <div className="config-body">
+              {queues.map(q => (
+                <div key={q.id} className="queue-config-item">
+                  <div className="qci-info">
+                    <div className="qci-name">{q.label}</div>
+                    <div className="qci-meta">
+                      <span>🏷️ {q.name}</span>
+                      <span>👥 {q.agents} agents</span>
+                      <span>🕐 {q.hours}</span>
+                      {q.inQueue > 0 && <span style={{color:'var(--red)'}}>⚠️ {q.inQueue} waiting</span>}
+                    </div>
+                  </div>
+                  <div className="qci-controls">
+                    <div className={`qci-status ${q.open ? 'open' : 'closed'}`}>
+                      {q.open ? '● Open' : '○ Closed'}
+                    </div>
+                    <label className="toggle-switch">
+                      <input type="checkbox" checked={q.open} onChange={() => toggleQueue(q.id)} />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Routing Profile Section */}
+          <div className="config-section">
+            <div className="config-section-header">
+              <div className="csh-icon green">🔀</div>
+              <div className="csh-info">
+                <h3>Agent Routing Profiles</h3>
+                <p>Assign routing profiles and skill proficiency levels</p>
+              </div>
+            </div>
+            <div className="config-body">
+              <table className="routing-table" style={{width:'100%'}}>
+                <thead>
+                  <tr>
+                    <th>Agent</th>
+                    <th>Current Routing Profile</th>
+                    <th>Skill</th>
+                    <th>Proficiency Level</th>
+                    <th>Change Profile</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {agents.map(a => (
+                    <tr key={a.id}>
+                      <td>{a.name}</td>
+                      <td><span className="skill-badge">🔀 {a.profile}</span></td>
+                      <td><span style={{fontSize:13,color:'var(--gray-600)'}}>{a.skill}</span></td>
+                      <td>
+                        <div style={{display:'flex',alignItems:'center',gap:8}}>
+                          {[1,2,3,4,5].map(l => (
+                            <div key={l} style={{width:18,height:18,borderRadius:4,background: l<=a.level ? 'var(--blue)' : 'var(--gray-100)',border:`1px solid ${l<=a.level?'var(--blue)':'var(--gray-200)'}`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:9,color: l<=a.level?'white':'var(--gray-300)',fontWeight:700}}>{l}</div>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <select className="rt-select">
+                          <option>{a.profile}</option>
+                          <option>kk_rp_agent_dev</option>
+                          <option>kk_rp_supervisor_dev</option>
+                        </select>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Lex Bot Config */}
+          <div className="config-section">
+            <div className="config-section-header">
+              <div className="csh-icon gold">🤖</div>
+              <div className="csh-info">
+                <h3>Amazon Lex Bot Configuration</h3>
+                <p>Manage intents, locales, and bot aliases for kk_lexbot_dev</p>
+              </div>
+            </div>
+            <div className="config-body">
+              <div className="lex-config">
+                {[
+                  { lang:'English (en_US)', flag:'🇺🇸', intents:['ClaimStatus','PolicyInfo','FallbackIntent'], hits:[142,89,31] },
+                  { lang:'Spanish (es_US)', flag:'🇪🇸', intents:['ClaimStatus','PolicyInfo','FallbackIntent'], hits:[28,19,7] },
+                ].map(bot => (
+                  <div key={bot.lang} className="lc-bot-card">
+                    <div className="lc-bot-header">
+                      <div className="lc-bot-icon">{bot.flag}</div>
+                      <div><div className="lc-bot-name">{bot.lang}</div><div className="lc-bot-ver">kk_lexalias_dev · v1.0</div></div>
+                    </div>
+                    <div className="intent-list">
+                      {bot.intents.map((intent, i) => (
+                        <div key={intent} className="intent-item">
+                          <div className="intent-name">
+                            ⚡ {intent}
+                            <span className={`intent-lang ${bot.lang.includes('English')?'en':'es'}`}>{bot.lang.includes('English')?'EN':'ES'}</span>
+                          </div>
+                          <span className="intent-hits">{bot.hits[i]} hits</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Contact Lens */}
+          <div className="config-section">
+            <div className="config-section-header">
+              <div className="csh-icon red">🔍</div>
+              <div className="csh-info">
+                <h3>Contact Lens Settings</h3>
+                <p>Enable analytics and evaluation for contact flows</p>
+              </div>
+            </div>
+            <div className="config-body">
+              {[
+                { label:'Enable Contact Lens on Voice Flows', desc:'Transcription and sentiment analysis for voice contacts', enabled: true },
+                { label:'Enable Contact Lens on Chat Flows', desc:'Full transcript and intent analytics for chat sessions', enabled: true },
+                { label:'Agent Evaluation Forms', desc:'Automatic scoring with kk_evalform_dev after each contact', enabled: true },
+                { label:'Redaction of PII Data', desc:'Automatically redact credit card, SSN from transcripts', enabled: false },
+              ].map(item => (
+                <div key={item.label} className="queue-config-item">
+                  <div className="qci-info">
+                    <div className="qci-name">{item.label}</div>
+                    <div style={{fontSize:12,color:'var(--gray-400)',marginTop:2}}>{item.desc}</div>
+                  </div>
+                  <div className="qci-controls">
+                    <label className="toggle-switch">
+                      <input type="checkbox" defaultChecked={item.enabled} />
+                      <span className="toggle-slider"></span>
+                    </label>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </main>
+      </div>
+
+      {/* Save Bar */}
+      <div className="save-bar">
+        <p>{saved ? '✅ Changes saved successfully!' : '⚠️ You have unsaved changes. Save to apply to kk_connect_dev.'}</p>
+        <div>
+          <button className="btn-discard">Discard</button>
+          <button className="btn-save" onClick={handleSave}>{saved ? '✅ Saved!' : '💾 Save Changes'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════
+// MAIN APP
+// ══════════════════════════════════════════════════════
+function App() {
+  const [view, setView] = useState('portal');
+
+  const tabs = [
+    { id:'portal', icon:'🌐', label:'Customer Portal', badge: null },
+    { id:'ccp', icon:'🎧', label:'Agent CCP', badge: '2' },
+    { id:'dashboard', icon:'📊', label:'Supervisor Dashboard', badge: '3' },
+    { id:'manager', icon:'⚙️', label:'Manager Config', badge: null },
+  ];
+
+  return (
+    <div className="app-shell">
+      <nav className="app-switcher">
+        <div className="switcher-brand">
+          <div className="brand-icon">🛡️</div>
+          <div>
+            <div className="brand-name">Kiro Krafters</div>
+            <div className="brand-tag">AI Contact Center · Amazon Connect</div>
+          </div>
+        </div>
+        <div className="switcher-tabs">
+          {tabs.map(t => (
+            <button key={t.id} className={`sw-tab ${view===t.id?'active':''}`} onClick={() => setView(t.id)}>
+              <span className="tab-icon">{t.icon}</span>
+              {t.label}
+              {t.badge && <span className="sw-badge">{t.badge}</span>}
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      <div style={{flex:1,overflow:'hidden',display:'flex',flexDirection:'column'}}>
+        {view === 'portal' && <CustomerPortal />}
+        {view === 'ccp' && <AgentCCP />}
+        {view === 'dashboard' && <SupervisorDashboard />}
+        {view === 'manager' && <ManagerConfig />}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>

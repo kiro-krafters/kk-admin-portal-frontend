@@ -5,24 +5,24 @@ import { MOCK_ALERTS } from '../../mock/alerts';
 const SEVERITY_CONFIG: Record<AlertSeverity, { icon: string; bg: string; border: string; iconBg: string; text: string }> = {
   error: {
     icon: '🔴',
-    bg: 'bg-red-50',
-    border: 'border-red-200',
-    iconBg: 'bg-red-100',
-    text: 'text-red-700',
+    bg: 'bg-connect-error-soft',
+    border: 'border-connect-error',
+    iconBg: 'bg-connect-error-soft',
+    text: 'text-connect-error',
   },
   warn: {
     icon: '⚠️',
-    bg: 'bg-amber-50',
-    border: 'border-amber-200',
-    iconBg: 'bg-amber-100',
-    text: 'text-amber-700',
+    bg: 'bg-connect-warning-soft',
+    border: 'border-connect-warning',
+    iconBg: 'bg-connect-warning-soft',
+    text: 'text-connect-warning',
   },
   info: {
     icon: 'ℹ️',
-    bg: 'bg-blue-50',
-    border: 'border-blue-200',
-    iconBg: 'bg-blue-100',
-    text: 'text-blue-700',
+    bg: 'bg-connect-teal-soft',
+    border: 'border-connect-teal',
+    iconBg: 'bg-connect-teal-50',
+    text: 'text-connect-teal-dark',
   },
 };
 
@@ -46,20 +46,20 @@ export default function AlertsTab() {
     <div className="space-y-4">
       {/* Summary bar */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2">
+        <div className="flex items-center gap-2 rounded-md border border-connect-error bg-connect-error-soft px-4 py-2">
           <span className="text-base">🔔</span>
-          <span className="text-sm font-bold text-red-700">{unacknowledged} unacknowledged alerts</span>
+          <span className="text-sm font-semibold text-connect-error">{unacknowledged} unacknowledged alerts</span>
         </div>
 
-        <div className="flex gap-1 ml-auto">
+        <div className="ml-auto flex gap-1">
           {(['all', 'error', 'warn', 'info'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
+              className={`rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition-colors ${
                 filter === f
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  ? 'bg-connect-teal text-white'
+                  : 'bg-connect-bg-alt text-connect-text-secondary hover:bg-connect-border hover:text-connect-text'
               }`}
             >
               {f === 'all' ? 'All' : f === 'error' ? 'Critical' : f === 'warn' ? 'Warning' : 'Info'}
@@ -69,7 +69,7 @@ export default function AlertsTab() {
 
         <button
           onClick={acknowledgeAll}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50"
+          className="rounded-md border border-connect-border bg-connect-bg px-3 py-1.5 text-xs font-semibold text-connect-text-secondary shadow-connect-card hover:bg-connect-bg-alt"
         >
           ✓ Acknowledge All
         </button>
@@ -82,25 +82,25 @@ export default function AlertsTab() {
           return (
             <div
               key={alert.id}
-              className={`flex items-start gap-4 rounded-2xl border p-4 transition-opacity ${cfg.bg} ${cfg.border} ${
+              className={`flex items-start gap-4 rounded-xl border p-4 transition-opacity ${cfg.bg} ${cfg.border} ${
                 alert.acknowledged ? 'opacity-50' : ''
               }`}
             >
-              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl text-base ${cfg.iconBg}`}>
+              <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-base ${cfg.iconBg}`}>
                 {cfg.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <div className={`text-sm font-bold ${cfg.text}`}>{alert.title}</div>
-                <div className="mt-0.5 text-xs text-slate-500">{alert.description}</div>
-                <div className="mt-1 text-[10px] text-slate-400">{alert.time}</div>
+                <div className={`text-sm font-semibold ${cfg.text}`}>{alert.title}</div>
+                <div className="mt-0.5 text-xs text-connect-text-secondary">{alert.description}</div>
+                <div className="mt-1 text-[10px] text-connect-text-secondary">{alert.time}</div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex flex-shrink-0 items-center gap-2">
                 {alert.acknowledged ? (
-                  <span className="text-[11px] font-semibold text-slate-400">Acknowledged</span>
+                  <span className="text-[11px] font-semibold text-connect-text-secondary">Acknowledged</span>
                 ) : (
                   <button
                     onClick={() => acknowledge(alert.id)}
-                    className="rounded-md bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 border border-slate-200 transition-colors"
+                    className="rounded-md border border-connect-border bg-connect-bg px-3 py-1.5 text-xs font-semibold text-connect-text-secondary shadow-connect-card transition-colors hover:bg-connect-bg-alt"
                   >
                     Acknowledge
                   </button>
@@ -111,7 +111,7 @@ export default function AlertsTab() {
         })}
 
         {visible.length === 0 && (
-          <div className="rounded-2xl border border-slate-200 bg-white py-16 text-center text-sm text-slate-400">
+          <div className="rounded-xl border border-connect-border bg-connect-bg py-16 text-center text-sm text-connect-text-secondary shadow-connect-card">
             ✅ No alerts in this category
           </div>
         )}
