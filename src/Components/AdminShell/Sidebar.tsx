@@ -3,8 +3,10 @@ import {
   AnalyticsIcon,
   ChannelsIcon,
   DashboardIcon,
+  ManagerIcon,
   RoutingIcon,
   SettingsIcon,
+  SupervisorIcon,
   UsersIcon,
 } from "./AdminIcons";
 
@@ -37,6 +39,8 @@ const NAV: NavItem[] = [
       { to: "/channels/flows", label: "Contact flows" },
     ],
   },
+  { to: "/supervisor", label: "Supervisor", icon: SupervisorIcon },
+  { to: "/manager", label: "Manager", icon: ManagerIcon },
   { to: "/analytics", label: "Analytics", icon: AnalyticsIcon },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];

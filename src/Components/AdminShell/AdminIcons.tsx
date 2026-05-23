@@ -116,6 +116,27 @@ export function PhoneFabIcon(props: IconProps) {
   );
 }
 
+export function SupervisorIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} {...props}>
+      <rect x="2" y="3" width="20" height="13" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+      <path d="M7 8h2M7 11h4" />
+      <circle cx="15" cy="9.5" r="2" />
+    </svg>
+  );
+}
+
+export function ManagerIcon(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" {...stroke} {...props}>
+      <path d="M12 2a10 10 0 1 0 10 10H12V2Z" />
+      <path d="M12 2a10 10 0 0 1 10 10" />
+      <path d="M12 12V2" />
+    </svg>
+  );
+}
+
 export function MinusIcon(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" {...stroke} {...props}>

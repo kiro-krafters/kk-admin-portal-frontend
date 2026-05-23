@@ -2,6 +2,8 @@ import { createBrowserRouter } from "react-router";
 import Layout from "./Pages/Layout";
 import Dashboard from "./Pages/Dashboard";
 import StubPage from "./Pages/StubPage";
+import SupervisorPage from "./pages/SupervisorPage";
+import ManagerPage from "./pages/ManagerPage";
 
 export const router = createBrowserRouter([
   {
@@ -9,6 +11,8 @@ export const router = createBrowserRouter([
     Component: Layout,
     children: [
       { index: true, Component: Dashboard },
+      { path: "supervisor", Component: SupervisorPage },
+      { path: "manager", Component: ManagerPage },
       {
         path: "users",
         element: (
