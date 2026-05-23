@@ -1,4 +1,5 @@
 import "amazon-connect-streams";
+import "amazon-connect-chatjs";
 
 declare global {
   interface Window {
@@ -172,4 +173,85 @@ export function sendDigit(digit: string): void {
     const conn = contact.getAgentConnection();
     if (conn) conn.sendDigits(digit);
   });
+}
+
+/* ---------- Chat ---------- */
+
+export type ChatMessage = {
+  id: string;
+  from: "agent" | "customer" | "system";
+  participantRole?: string;
+  content: string;
+  contentType: string;
+  timestamp: number;
+};
+
+/** Returns the chat session media controller for a chat contact. */
+export async function getChatSession(contact: connect.Contact): Promise<any> {
+  // The controller object is added by amazon-connect-chatjs once loaded.
+  // Streams' Contact connection exposes getMediaController() at runtime.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const conn = contact.getAgentConnection() as any;
+  if (!conn?.getMediaController) {
+    throw new Error("Chat media controller not available on this connection");
+  }
+  return await conn.getMediaController();
+}
+
+export async function sendChatMessage(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chatSession: any,
+  text: string
+): Promise<void> {
+  if (!text.trim()) return;
+  await chatSession.sendMessage({
+    message: text,
+    contentType: "text/plain",
+  });
+}
+
+export async function sendTypingEvent(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chatSession: any
+): Promise<void> {
+  try {
+    await chatSession.sendEvent({
+      contentType: "application/vnd.amazonaws.connect.event.typing",
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
+/* ---------- Transfer ---------- */
+
+export function transferToEndpoint(
+  contact: connect.Contact,
+  endpoint: connect.Endpoint
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    contact.addConnection(endpoint, {
+      success: () => resolve(),
+      failure: (err) => reject(new Error(String(err))),
+    });
+  });
+}
+
+/* ---------- Contact attributes ---------- */
+
+export function readContactAttributes(
+  contact: connect.Contact
+): Record<string, string> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const attrs = contact.getAttributes() as any;
+  const out: Record<string, string> = {};
+  if (attrs && typeof attrs === "object") {
+    for (const [k, v] of Object.entries(attrs)) {
+      // streams represents each attribute as { name, value }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const value = (v as any)?.value ?? v;
+      out[k] = String(value ?? "");
+    }
+  }
+  return out;
 }
